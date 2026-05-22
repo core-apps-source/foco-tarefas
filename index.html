@@ -4,12 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
 <title>Foco — Tarefas</title>
-<link rel="manifest" href="./manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
 :root{
   --bg:#0b0b14;--surface:#13131f;--surface2:#1e1e30;--surface3:#252538;
-  --accent:#ff9f43;--accent2:#8b7cf6;--green:#2ed573;--red:#ff6b6b;
+  --accent:#ff6bb3;--accent2:#8b7cf6;--green:#2ed573;--red:#ff6b6b;
   --text:#e8e4f4;--muted:#6b6880;--border:rgba(255,255,255,0.06);
   --r:16px;--font:'Outfit',sans-serif;
 }
@@ -58,15 +57,17 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);display:flex
 .goal-bar-top{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:4px;}
 .goal-bar-top span:last-child{color:var(--accent);font-weight:600;}
 .goal-bar{height:5px;background:var(--surface3);border-radius:999px;overflow:hidden;}
-.goal-bar-fill{height:100%;background:linear-gradient(90deg,var(--accent),#ffcc70);border-radius:999px;transition:width .4s ease;}
+.goal-bar-fill{height:100%;background:linear-gradient(90deg,var(--accent),#ffb5e6);border-radius:999px;transition:width .4s ease;}
 .goal-bar-fill.full{background:linear-gradient(90deg,var(--green),#70ffd1);}
 .task-right{display:flex;align-items:center;gap:6px;flex-shrink:0;}
-.log-btn{background:rgba(255,159,67,.15);color:var(--accent);border:none;border-radius:8px;padding:5px 10px;font-family:var(--font);font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;}
-.log-btn:hover{background:rgba(255,159,67,.3);}
+.log-btn{background:rgba(255,107,179,.15);color:var(--accent);border:none;border-radius:8px;padding:5px 10px;font-family:var(--font);font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;}
+.log-btn:hover{background:rgba(255,107,179,.3);}
+.revert-btn{background:var(--surface2);color:var(--muted);border:1px solid var(--border);border-radius:10px;padding:8px 10px;font-family:var(--font);font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;}
+.revert-btn:hover{background:var(--surface3);}
 .empty-state{text-align:center;padding:48px 32px;color:var(--muted);}
 .empty-state .emoji{font-size:48px;margin-bottom:12px;}
 .empty-state p{font-size:14px;line-height:1.6;}
-.fab{position:fixed;bottom:88px;right:50%;transform:translateX(calc(50% - 8px));width:56px;height:56px;border-radius:18px;background:var(--accent);border:none;cursor:pointer;font-size:28px;color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 24px rgba(255,159,67,.4);transition:all .15s;z-index:20;}
+.fab{position:fixed;bottom:88px;right:50%;transform:translateX(calc(50% - 8px));width:56px;height:56px;border-radius:18px;background:var(--accent);border:none;cursor:pointer;font-size:28px;color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 24px rgba(255,107,179,.4);transition:all .15s;z-index:20;}
 .fab:hover{filter:brightness(1.1);}
 @media(max-width:480px){.fab{right:20px;transform:none;}}
 .bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:rgba(11,11,20,.95);backdrop-filter:blur(20px);border-top:1px solid var(--border);display:flex;z-index:30;padding-bottom:env(safe-area-inset-bottom);}
@@ -124,7 +125,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);display:flex
 .form-input::placeholder{color:var(--muted);}
 .toggle-group{display:flex;gap:8px;flex-wrap:wrap;}
 .toggle-btn{flex:1;padding:10px;border-radius:10px;background:var(--surface2);border:1px solid var(--border);font-family:var(--font);font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;transition:all .15s;text-align:center;}
-.toggle-btn.active{background:rgba(255,159,67,.15);color:var(--accent);border-color:rgba(255,159,67,.4);}
+.toggle-btn.active{background:rgba(255,107,179,.15);color:var(--accent);border-color:rgba(255,107,179,.4);}
 .btn-primary{width:100%;padding:14px;border-radius:14px;background:var(--accent);border:none;font-family:var(--font);font-size:15px;font-weight:700;color:#fff;cursor:pointer;transition:all .15s;margin-top:8px;display:block;text-align:center;}
 .btn-primary:hover{filter:brightness(1.1);}
 .btn-secondary{width:100%;padding:14px;border-radius:14px;background:var(--surface2);border:1px solid var(--border);font-family:var(--font);font-size:15px;font-weight:600;color:var(--text);cursor:pointer;transition:all .15s;margin-top:6px;display:block;text-align:center;}
@@ -155,7 +156,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);display:flex
 .sync-option-sub{font-size:12px;color:var(--muted);margin-top:2px;}
 .chip{display:inline-flex;align-items:center;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:2px 8px;font-size:11px;font-weight:600;color:var(--muted);}
 .chip.green{background:rgba(46,213,115,.1);color:var(--green);border-color:rgba(46,213,115,.2);}
-.chip.orange{background:rgba(255,159,67,.1);color:var(--accent);border-color:rgba(255,159,67,.2);}
+.chip.orange{background:rgba(255,107,179,.1);color:var(--accent);border-color:rgba(255,107,179,.2);}
 .wizard-steps{display:flex;gap:6px;margin-bottom:20px;}
 .wizard-step{height:3px;flex:1;border-radius:999px;background:var(--surface3);}
 .wizard-step.done{background:var(--accent);}
@@ -175,7 +176,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);display:flex
 .detail-icon{width:52px;height:52px;border-radius:16px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;}
 .detail-title{font-size:19px;font-weight:800;line-height:1.2;}
 .detail-type-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;padding:3px 9px;border-radius:6px;margin-top:4px;}
-.detail-type-badge.goal{background:rgba(255,159,67,.12);color:var(--accent);border:1px solid rgba(255,159,67,.25);}
+.detail-type-badge.goal{background:rgba(255,107,179,.12);color:var(--accent);border:1px solid rgba(255,107,179,.25);}
 .detail-type-badge.simple{background:rgba(46,213,115,.12);color:var(--green);border:1px solid rgba(46,213,115,.25);}
 
 .detail-meta-row{display:flex;gap:8px;margin-bottom:16px;}
@@ -194,7 +195,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);display:flex
 .tl-col-head{font-size:9px;font-weight:700;color:var(--muted);text-align:center;padding:2px 0;letter-spacing:.3px;}
 .tl-cell{aspect-ratio:1;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;position:relative;cursor:default;}
 .tl-cell.tl-done{background:rgba(46,213,115,.2);color:var(--green);border:1px solid rgba(46,213,115,.3);}
-.tl-cell.tl-partial{background:rgba(255,159,67,.15);color:var(--accent);border:1px solid rgba(255,159,67,.25);}
+.tl-cell.tl-partial{background:rgba(255,107,179,.15);color:var(--accent);border:1px solid rgba(255,107,179,.25);}
 .tl-cell.tl-missed{background:rgba(255,107,107,.15);color:var(--red);border:1px solid rgba(255,107,107,.2);}
 .tl-cell.tl-today{outline:2px solid var(--accent);outline-offset:1px;}
 .tl-cell.tl-future{background:var(--surface3);color:var(--muted);border:1px solid transparent;}
@@ -232,7 +233,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);display:flex
 .date-pill.selected{background:var(--accent);border-color:var(--accent);}
 .date-pill.selected .dp-dow{color:rgba(255,255,255,.75);}
 .date-pill.selected .dp-num{color:#fff;}
-.date-pill.is-today:not(.selected){border-color:rgba(255,159,67,.5);background:rgba(255,159,67,.08);}
+.date-pill.is-today:not(.selected){border-color:rgba(255,107,179,.5);background:rgba(255,107,179,.08);}
 .dp-dow{font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);}
 .dp-num{font-size:18px;font-weight:800;color:var(--text);line-height:1;}
 .dp-dot-row{display:flex;gap:2px;min-height:6px;align-items:center;}
@@ -437,11 +438,32 @@ const App = {
     if (!tasks.length) return 0;
     let pts=0;
     tasks.forEach(t=>{
-      const d=this.getTaskDayData(t.id,date);
-      if (t.type==='simple'){if(d.completed)pts++;}
-      else{const g=this.getTaskGoalForDay(t,date);if(g>0)pts+=Math.min(1,(d.progress||0)/g);}
+      if (t.type==='simple'){
+        const d=this.getTaskDayData(t.id,date);
+        if (d.completed) pts++;
+      } else {
+        pts += this.getGoalCompletionFraction(t,date);
+      }
     });
     return Math.round((pts/tasks.length)*100);
+  },
+
+  isTaskDayDone(task, date) {
+    const d = this.getTaskDayData(task.id, date);
+    if (task.type === 'simple') return !!d.completed;
+    // For goals, only consider it done if it was explicitly finished (finishedTime or completed flag)
+    return !!d.finishedTime || !!d.completed;
+  },
+
+  getGoalCompletionFraction(task, date) {
+    const d = this.getTaskDayData(task.id, date);
+    const goal = this.getTaskGoalForDay(task, date) || 1;
+    const prog = d.progress || 0;
+    if (prog >= goal) {
+      // If reached goal but not marked finished, count slightly less than full to avoid counting as done
+      return (d.finishedTime || d.completed) ? 1 : 0.99;
+    }
+    return Math.min(1, prog / goal);
   },
 
   // ===================== FINISH TIME =====================
@@ -734,14 +756,8 @@ const App = {
 
     // Past or today: same interactive cards
     const today = this.getToday();
-    const pending = tasks.filter(t => {
-      const d = this.getTaskDayData(t.id, date);
-      return t.type==='simple' ? !d.completed : (d.progress||0) < this.getTaskGoalForDay(t,date);
-    });
-    const doneList = tasks.filter(t => {
-      const d = this.getTaskDayData(t.id, date);
-      return t.type==='simple' ? d.completed : (d.progress||0) >= (this.getTaskGoalForDay(t,date)||1);
-    });
+    const pending = tasks.filter(t => !this.isTaskDayDone(t,date));
+    const doneList = tasks.filter(t => this.isTaskDayDone(t,date));
     let html = '';
     if (pending.length) {
       html += `<div class="section-badge"><div class="section-badge-dot"></div>${isPast?'Não concluídas':'Pendentes'} (${pending.length})</div><div class="tasks-list">`;
@@ -857,14 +873,16 @@ const App = {
           </div>`:''}
           <div class="tap-hint">ℹ️ Ver detalhes e histórico</div>
         </div>
-        ${hasWords&&!checked?`<div class="task-right"><button class="log-btn" onclick="event.stopPropagation();App.openLogWords('${task.id}')">+ Palavras</button></div>`:''}
+        <div class="task-right">
+          ${checked?`<button class="revert-btn" onclick="event.stopPropagation();App.revertTask('${task.id}','${date}')">↩ Reverter</button>`:hasWords?`<button class="log-btn" onclick="event.stopPropagation();App.openLogWords('${task.id}')">+ Palavras</button>`:''}
+        </div>
       </div>`;
     } else {
       const goal=this.getTaskGoalForDay(task,date),progress=data.progress||0;
       const pct=goal>0?Math.min(100,Math.round((progress/goal)*100)):0;
-      const isFull=pct>=100;
+      const isFull=pct>=100 && (data.finishedTime || data.completed);
       const idx=this.daysDiff(task.startDate,date);
-      const ftBadge=data.finishedTime&&isFull?`<span class="done-time-chip">✓ ${data.finishedTime}</span>`:'';
+      const ftBadge=data.finishedTime&&pct>=100?`<span class="done-time-chip">✓ ${data.finishedTime}</span>`:'';
       const timeSpentBadge=data.timeSpent&&isFull?`<span class="done-time-chip" style="background:rgba(139,124,246,.12);color:var(--accent2);border-color:rgba(139,124,246,.25)">⏱ ${data.timeSpent>=60?(Math.floor(data.timeSpent/60)+'h'+(data.timeSpent%60>0?data.timeSpent%60+'min':'')):data.timeSpent+'min'}</span>`:'';
 
       // startOffset: pages already done before the task was created
@@ -887,6 +905,7 @@ const App = {
       const totalReadSoFar=startOffset+cumDaysBefore+progress;
       const globalPct=totalBook>0?Math.min(100,Math.round((totalReadSoFar/totalBook)*100)):pct;
       const globalPctDisplay=totalBook>0?globalPct:pct;
+      const displayPct = isFull ? 100 : pct;
 
       // Toggle de exibição: páginas ou capítulo
       if(!this.state.barModes)this.state.barModes={};
@@ -919,14 +938,14 @@ const App = {
           <div class="goal-bar-wrap">
             <div class="goal-bar-top">
               <span>${progress} / ${goal} ${task.goalUnit} hoje</span>
-              <span style="color:var(--muted);font-size:10px"${barToggle}>${barLabel}${barToggle?` <span style="font-size:9px;opacity:.5">↕</span>`:''} · <b style="color:var(--accent)">${globalPctDisplay}%</b></span>
+              <span style="color:var(--muted);font-size:10px"${barToggle}>${barLabel}${barToggle?` <span style="font-size:9px;opacity:.5">↕</span>`:''} · <b style="color:var(--accent)">${displayPct}%</b></span>
             </div>
-            <div class="goal-bar"><div class="goal-bar-fill ${globalPctDisplay>=100?'full':''}" style="width:${globalPctDisplay}%"></div></div>
+            <div class="goal-bar"><div class="goal-bar-fill ${displayPct>=100?'full':''}" style="width:${displayPct}%"></div></div>
           </div>
           <div class="tap-hint">ℹ️ Ver datas, calendário e atrasos</div>
         </div>
         <div class="task-right">
-          ${!isFull?`<button class="log-btn" onclick="App.openLogProgress('${task.id}')">+ Registrar</button>`:`<span style="font-size:18px">✅</span>`}
+          ${!isFull?`<button class="log-btn" onclick="App.openLogProgress('${task.id}')">+ Registrar</button>`:`<button class="revert-btn" onclick="event.stopPropagation();App.revertTask('${task.id}','${date}')">↩ Reverter</button>`}
         </div>
       </div>`;
     }
@@ -943,6 +962,30 @@ const App = {
     this.save();
     if (!wasCompleted) this.promptFinishTime(taskId,date);
     else this.render();
+  },
+
+  revertTask(taskId,date) {
+    const task = this.state.tasks.find(t=>t.id===taskId);
+    const reset = {
+      completed: false,
+      completedAt: null,
+      finishedTime: null,
+      progress: 0,
+      wordsProgress: 0,
+      altProgress: null,
+      timeSpent: null,
+    };
+    this.setTaskDayData(taskId,date,reset);
+    // Debug: log state after revert to diagnose pct mismatch
+    const d = this.getTaskDayData(taskId,date);
+    const goalFrac = task && task.type==='goal' ? this.getGoalCompletionFraction(task,date) : (d.completed?1:0);
+    console.log('revertTask ->', {taskId,date,data:d,goalFrac, dailyPct:this.getDailyCompletion(date)});
+    // Ensure any modal (finishTime, etc.) is closed when reverting
+    this.state.modal = null;
+    this.state.wizard = null;
+    this.save();
+    this.render();
+    this.showToast('Tarefa revertida', 'success');
   },
 
   // ===================== SUMMARY =====================
@@ -971,7 +1014,7 @@ const App = {
         <div class="stat-row">
           <div class="stat-box"><div class="stat-val">${pct}%</div><div class="stat-lbl">Concluído</div></div>
           <div class="stat-box"><div class="stat-val">${tasks.length}</div><div class="stat-lbl">Tarefas</div></div>
-          <div class="stat-box"><div class="stat-val">${tasks.filter(t=>{const d=this.getTaskDayData(t.id,today);return t.type==='simple'?d.completed:(d.progress||0)>=(this.getTaskGoalForDay(t,today)||1);}).length}</div><div class="stat-lbl">Feitas</div></div>
+          <div class="stat-box"><div class="stat-val">${tasks.filter(t=>this.isTaskDayDone(t,today)).length}</div><div class="stat-lbl">Feitas</div></div>
         </div>
       </div>
       ${goalTasks.length?`<div class="summary-card">
@@ -1084,7 +1127,7 @@ const App = {
       const day=parseInt(date.split('-')[2]);
       let bg='var(--surface2)',color='var(--muted)';
       if (!isFuture&&pct>=80){bg='rgba(46,213,115,.25)';color='var(--green)';}
-      else if (!isFuture&&pct>=50){bg='rgba(255,159,67,.2)';color='var(--accent)';}
+      else if (!isFuture&&pct>=50){bg='rgba(255,107,179,.2)';color='var(--accent)';}
       else if (!isFuture&&pct>0){bg='rgba(255,107,107,.15)';color='var(--red)';}
       html+=`<div style="text-align:center;background:${bg};color:${color};border-radius:8px;padding:5px 2px;font-size:11px;font-weight:700;border:2px solid ${isToday?'var(--accent)':'transparent'}">${day}</div>`;
     });
@@ -1161,7 +1204,7 @@ const App = {
 
         <div style="font-size:11px;font-weight:700;letter-spacing:.5px;color:var(--muted);text-transform:uppercase;margin:16px 0 8px">📁 Arquivo local</div>
         <div class="sync-option" onclick="App.exportFile()">
-          <div class="sync-icon-wrap" style="background:rgba(255,159,67,.1)">⬇️</div>
+          <div class="sync-icon-wrap" style="background:rgba(255,107,179,.1)">⬇️</div>
           <div class="sync-option-info"><div class="sync-option-title">Exportar .foco</div><div class="sync-option-sub">Baixa arquivo com todos os dados</div></div>
           <div style="font-size:14px;color:var(--muted)">→</div>
         </div>
@@ -1412,17 +1455,17 @@ const App = {
     const steps=`<div class="wizard-steps">${Array.from({length:totalSteps},(_,i)=>`<div class="wizard-step ${i<w.step?'done':''}"></div>`).join('')}</div>`;
     let content='';
     if (w.step===1) {
-      const dows=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
-      content=`<div class="modal-title">${isEdit?'Editar tarefa':'Nova tarefa'}</div>
+      const dows=['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
+      content=`<div class="modal-title">${isEdit?'Editar tarefa':'Nova atividade'}</div>
         <div class="modal-sub">Passo 1: tipo e nome</div>
         <div class="form-group"><label class="form-label">Tipo</label>
           <div class="toggle-group">
-            <button class="toggle-btn ${w.type==='simple'?'active':''}" onclick="App.setWizard('type','simple')">✅ Simples</button>
+            <button class="toggle-btn ${w.type==='simple'?'active':''}" onclick="App.setWizard('type','simple')">✔️ Simples</button>
             <button class="toggle-btn ${w.type==='goal'?'active':''}" onclick="App.setWizard('type','goal')">🎯 Meta</button>
           </div>
         </div>
         <div class="form-group"><label class="form-label">Nome</label>
-          <input class="form-input" id="wiz-name" placeholder="Ex: Meditar, Ler livro..." value="${w.name}" oninput="App.state.wizard.name=this.value">
+          <input class="form-input" id="wiz-name" placeholder="Ex: Estudar inglês, Ler livro..." value="${w.name}" oninput="App.state.wizard.name=this.value">
         </div>
         <div class="form-group"><label class="form-label">Dias da semana</label>
           <div class="toggle-group">${dows.map((l,i)=>`<button class="toggle-btn ${w.daysOfWeek.includes(i)?'active':''}" onclick="App.toggleDow(${i})" style="font-size:12px;padding:7px 4px">${l}</button>`).join('')}</div>
@@ -1430,7 +1473,7 @@ const App = {
         ${w.type==='simple'?`
         <div class="form-group"><label class="form-label">⏱ Meta de tempo diário <span style="color:var(--muted);font-size:11px;font-weight:400;text-transform:none">(opcional)</span></label>
           <div style="display:flex;align-items:center;gap:8px">
-            <input class="form-input" type="number" min="1" placeholder="Ex: 20" value="${w.dailyMinutes||''}" oninput="App.state.wizard.dailyMinutes=this.value" style="max-width:120px">
+            <input class="form-input" type="number" min="1" placeholder="Ex: 10" value="${w.dailyMinutes||''}" oninput="App.state.wizard.dailyMinutes=this.value" style="max-width:120px">
             <span style="color:var(--muted);font-size:13px;font-weight:600">min/dia</span>
           </div>
         </div>
@@ -1479,11 +1522,11 @@ const App = {
           <div class="toggle-group">${['páginas','min'].map(u=>`<button class="toggle-btn ${w.goalUnit===u?'active':''}" onclick="App.setWizard('goalUnit','${u}')" style="font-size:12px">${u}</button>`).join('')}</div>
         </div>
         <div class="form-group"><label class="form-label">Total do livro/tarefa (${w.goalUnit})</label>
-          <input class="form-input" id="wiz-total" type="number" min="1" placeholder="Ex: 263" value="${w.totalGoal}" oninput="App.state.wizard.totalGoal=this.value;App.refreshWizardOffsetDOM();App.refreshWizardPagesDOM();App.refreshChapterPagesDOM()">
+          <input class="form-input" id="wiz-total" type="number" min="1" placeholder="Ex: 260" value="${w.totalGoal}" oninput="App.state.wizard.totalGoal=this.value;App.refreshWizardOffsetDOM();App.refreshWizardPagesDOM();App.refreshChapterPagesDOM()">
         </div>
         ${w.goalUnit!=='min'?`<div class="form-group">
           <label class="form-label">📚 Número de capítulos <span style="color:var(--muted);font-weight:400;text-transform:none;font-size:11px">(opcional — para acompanhar por capítulo)</span></label>
-          <input class="form-input" type="number" min="1" placeholder="Ex: 12" value="${w.numChapters||''}" oninput="App.state.wizard.numChapters=parseInt(this.value)||'';App.refreshChapterPagesDOM()">
+          <input class="form-input" type="number" min="1" placeholder="Ex: 10" value="${w.numChapters||''}" oninput="App.state.wizard.numChapters=parseInt(this.value)||'';App.refreshChapterPagesDOM()">
         </div>`:''}
         <div id="wiz-chapter-pages-wrap" ${w.goalUnit==='min'?'style="display:none"':''}>${(()=>{
           const numChapters=parseInt(w.numChapters)||0;
@@ -1897,7 +1940,7 @@ const App = {
           <button class="log-ctrl-btn" onclick="App.adjustLogPosition(1)">+</button>
         </div>
         ${isAltUnit&&previewPages!==null&&!noConv?`
-          <div style="margin-top:8px;background:rgba(255,159,67,.1);border:1px solid rgba(255,159,67,.2);border-radius:10px;padding:8px 12px;font-size:12px;color:var(--accent)">
+          <div style="margin-top:8px;background:rgba(255,107,179,.1);border:1px solid rgba(255,107,179,.2);border-radius:10px;padding:8px 12px;font-size:12px;color:var(--accent)">
             ≈ <b>${previewPages} ${task.goalUnit}</b> (${inputVal} ${selectedUnit} × ${convRate} ${task.goalUnit}/${selectedUnit})
           </div>`:''}
         ${noConv?`
@@ -1917,7 +1960,7 @@ const App = {
 
   // Retorna lista de unidades alternativas conhecidas (exceto a principal)
   getAltUnits(task){
-    const base=['páginas','cap.','versículos','seções','km','min'];
+    const base=['páginas','cap.','versículos','min'];
     const extra=Object.keys(task.unitConversions||{});
     const all=[...new Set([...base,...extra])].filter(u=>u!==task.goalUnit);
     return all;
@@ -2191,7 +2234,7 @@ const App = {
             <span>Progresso geral (${totalReadSoFar}/${totalBook})</span><b style="color:var(--accent)">${globalPct}%</b>
           </div>
           <div class="detail-progress-bar">
-            <div class="detail-progress-fill" style="width:${globalPct}%;background:${globalPct>=100?'linear-gradient(90deg,var(--green),#70ffd1)':'linear-gradient(90deg,var(--accent),#ffcc70)'}"></div>
+            <div class="detail-progress-fill" style="width:${globalPct}%;background:${globalPct>=100?'linear-gradient(90deg,var(--green),#70ffd1)':'linear-gradient(90deg,var(--accent),#ffb5e6)'}"></div>
           </div>
           ${startOffset>0?`<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:6px">
             <span>Progresso desta fase (${totalDone}/${taskGoalSum})</span><b style="color:var(--accent2)">${taskPct}%</b>
@@ -2215,7 +2258,7 @@ const App = {
           </div>
           <div class="legend-row" style="margin-top:10px">
             <div class="legend-item"><div class="legend-dot" style="background:rgba(46,213,115,.4)"></div>Feito</div>
-            <div class="legend-item"><div class="legend-dot" style="background:rgba(255,159,67,.3)"></div>Parcial</div>
+            <div class="legend-item"><div class="legend-dot" style="background:rgba(255,107,179,.3)"></div>Parcial</div>
             <div class="legend-item"><div class="legend-dot" style="background:rgba(255,107,107,.3)"></div>Perdido</div>
             <div class="legend-item"><div class="legend-dot" style="background:var(--surface3)"></div>Futuro</div>
           </div>
@@ -2376,12 +2419,14 @@ const App = {
   checkMissedTasks(){
     const today=this.getToday(),nowMins=this.timeToMins(this.getNow());
     this.state.tasks.forEach(task=>{
-      if(!this.isTaskActiveOnDate(task,today)||task.schedule!=='fixed'||!task.scheduledTime)return;
-      const data=this.getTaskDayData(task.id,today);
-      const done=task.type==='simple'?data.completed:(data.progress||0)>=this.getTaskGoalForDay(task,today);
-      if(!done&&nowMins>this.timeToMins(task.scheduledTime)+30){
+      if(!this.isTaskActiveOnDate(task,today)||task.schedule!=='fixed'||!task.scheduledTime) return;
+      const done = this.isTaskDayDone(task, today);
+      if(!done && nowMins>this.timeToMins(task.scheduledTime)+30){
         const key=`missed_${task.id}_${today}`;
-        if(!localStorage.getItem(key)){localStorage.setItem(key,'1');if(!this.state.modal)this.state.modal={type:'missedTask',taskId:task.id};}
+        if(!localStorage.getItem(key)){
+          localStorage.setItem(key,'1');
+          if(!this.state.modal) this.state.modal={type:'missedTask',taskId:task.id};
+        }
       }
     });
   },
@@ -2541,22 +2586,16 @@ const App = {
 
   // ===================== INIT =====================
   init(){
+    console.log('App.init - state.modal (before loadState):', this.state && this.state.modal);
     this.loadState();
+    console.log('App.init - state.modal (after loadState):', this.state && this.state.modal);
     this.checkMissedTasks();
+    console.log('App.init - state.modal (after checkMissedTasks):', this.state && this.state.modal);
     this.render();
   }
 };
 
 document.addEventListener('DOMContentLoaded',()=>App.init());
-</script>
-  <script>
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js')
-      .then(reg => console.log('Service Worker registrado com sucesso:', reg))
-      .catch(err => console.log('Erro ao registrar Service Worker:', err));
-  });
-}
 </script>
 </body>
 </html>
