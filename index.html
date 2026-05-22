@@ -1,0 +1,2601 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Foco — Tarefas</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0b0b14;--surface:#13131f;--surface2:#1e1e30;--surface3:#252538;
+  --accent:#ff6bb3;--accent2:#8b7cf6;--green:#2ed573;--red:#ff6b6b;
+  --text:#e8e4f4;--muted:#6b6880;--border:rgba(255,255,255,0.06);
+  --r:16px;--font:'Outfit',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;overflow:hidden;}
+body{font-family:var(--font);background:var(--bg);color:var(--text);display:flex;justify-content:center;align-items:stretch;}
+#app{width:100%;max-width:480px;height:100%;display:flex;flex-direction:column;position:relative;overflow:hidden;}
+.view{flex:1;overflow-y:auto;overflow-x:hidden;padding:0 0 90px;scroll-behavior:smooth;}
+.view::-webkit-scrollbar{width:3px;}
+.view::-webkit-scrollbar-thumb{background:var(--surface3);border-radius:4px;}
+.header{padding:52px 20px 16px;display:flex;align-items:center;justify-content:space-between;background:linear-gradient(to bottom,var(--bg) 80%,transparent);position:sticky;top:0;z-index:10;}
+.header-left h1{font-size:22px;font-weight:800;letter-spacing:-0.5px;}
+.header-left h1 span{color:var(--accent);}
+.header-left p{font-size:13px;color:var(--muted);margin-top:2px;}
+.header-btns{display:flex;gap:8px;}
+.header-btn{width:40px;height:40px;border-radius:12px;background:var(--surface2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:17px;transition:all .15s;}
+.header-btn:hover{background:var(--surface3);}
+.ring-section{display:flex;flex-direction:column;align-items:center;padding:12px 20px 24px;}
+.ring-wrap{position:relative;width:140px;height:140px;}
+.ring-wrap svg{transform:rotate(-90deg);}
+.ring-bg{fill:none;stroke:var(--surface2);stroke-width:10;}
+.ring-fill{fill:none;stroke:var(--accent);stroke-width:10;stroke-linecap:round;transition:stroke-dashoffset .6s cubic-bezier(.4,0,.2,1);}
+.ring-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.ring-pct{font-size:30px;font-weight:800;line-height:1;color:var(--accent);}
+.ring-label{font-size:11px;color:var(--muted);font-weight:500;margin-top:3px;letter-spacing:.5px;text-transform:uppercase;}
+.ring-meta{margin-top:10px;font-size:13px;color:var(--muted);}
+.ring-meta b{color:var(--text);font-weight:600;}
+.tasks-list{display:flex;flex-direction:column;gap:8px;padding:0 16px;}
+.task-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;display:flex;align-items:center;gap:12px;transition:all .15s;position:relative;overflow:hidden;}
+.task-card:hover{background:var(--surface2);}
+.task-card.done{opacity:.55;}
+.task-card.done .task-name{text-decoration:line-through;color:var(--muted);}
+.task-card.overdue{border-left:3px solid var(--red);}
+.task-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent);opacity:0;}
+.task-card.goal-card::before{opacity:1;}
+.check-btn{width:26px;height:26px;border-radius:8px;border:2px solid var(--surface3);display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;transition:all .15s;font-size:14px;}
+.check-btn:hover{border-color:var(--accent);}
+.check-btn.checked{background:var(--accent);border-color:var(--accent);color:#fff;}
+.task-body{flex:1;min-width:0;}
+.task-name{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.task-sub{font-size:12px;color:var(--muted);margin-top:3px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.task-time-badge{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:600;padding:2px 7px;border-radius:6px;background:var(--surface2);}
+.task-time-badge.late{background:rgba(255,107,107,.15);color:var(--red);}
+.done-time-chip{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:600;padding:2px 7px;border-radius:6px;background:rgba(46,213,115,.1);color:var(--green);border:1px solid rgba(46,213,115,.2);}
+.goal-bar-wrap{margin-top:8px;}
+.goal-bar-top{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:4px;}
+.goal-bar-top span:last-child{color:var(--accent);font-weight:600;}
+.goal-bar{height:5px;background:var(--surface3);border-radius:999px;overflow:hidden;}
+.goal-bar-fill{height:100%;background:linear-gradient(90deg,var(--accent),#ffb5e6);border-radius:999px;transition:width .4s ease;}
+.goal-bar-fill.full{background:linear-gradient(90deg,var(--green),#70ffd1);}
+.task-right{display:flex;align-items:center;gap:6px;flex-shrink:0;}
+.log-btn{background:rgba(255,107,179,.15);color:var(--accent);border:none;border-radius:8px;padding:5px 10px;font-family:var(--font);font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;}
+.log-btn:hover{background:rgba(255,107,179,.3);}
+.revert-btn{background:var(--surface2);color:var(--muted);border:1px solid var(--border);border-radius:10px;padding:8px 10px;font-family:var(--font);font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;}
+.revert-btn:hover{background:var(--surface3);}
+.empty-state{text-align:center;padding:48px 32px;color:var(--muted);}
+.empty-state .emoji{font-size:48px;margin-bottom:12px;}
+.empty-state p{font-size:14px;line-height:1.6;}
+.fab{position:fixed;bottom:88px;right:50%;transform:translateX(calc(50% - 8px));width:56px;height:56px;border-radius:18px;background:var(--accent);border:none;cursor:pointer;font-size:28px;color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 24px rgba(255,107,179,.4);transition:all .15s;z-index:20;}
+.fab:hover{filter:brightness(1.1);}
+@media(max-width:480px){.fab{right:20px;transform:none;}}
+.bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:rgba(11,11,20,.95);backdrop-filter:blur(20px);border-top:1px solid var(--border);display:flex;z-index:30;padding-bottom:env(safe-area-inset-bottom);}
+.nav-btn{flex:1;padding:10px 0 12px;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;border:none;background:transparent;color:var(--muted);font-family:var(--font);transition:color .15s;}
+.nav-btn.active{color:var(--accent);}
+.nav-icon{font-size:20px;}
+.nav-label{font-size:10px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;}
+.period-tabs{display:flex;gap:8px;padding:0 20px 16px;}
+.period-tab{flex:1;padding:8px;border-radius:10px;background:var(--surface);border:1px solid var(--border);font-family:var(--font);font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;transition:all .15s;text-align:center;}
+.period-tab.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+.summary-card{margin:0 16px 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px;}
+.summary-card-title{font-size:12px;font-weight:700;letter-spacing:.5px;color:var(--muted);text-transform:uppercase;margin-bottom:12px;}
+.stat-row{display:flex;gap:10px;}
+.stat-box{flex:1;background:var(--surface2);border-radius:12px;padding:12px;text-align:center;}
+.stat-val{font-size:22px;font-weight:800;color:var(--accent);}
+.stat-lbl{font-size:11px;color:var(--muted);margin-top:2px;}
+.day-bar-chart{display:flex;align-items:flex-end;gap:6px;height:70px;margin-top:4px;}
+.day-bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;}
+.day-bar{width:100%;border-radius:6px 6px 0 0;background:var(--accent);opacity:.3;min-height:4px;transition:all .3s;}
+.day-bar.filled{opacity:1;}
+.day-bar-label{font-size:10px;color:var(--muted);font-weight:600;}
+.day-bar-pct{font-size:9px;color:var(--muted);}
+.insight-item{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);}
+.insight-item:last-child{border-bottom:none;padding-bottom:0;}
+.insight-icon{font-size:18px;flex-shrink:0;margin-top:1px;}
+.insight-text{font-size:13px;color:var(--text);line-height:1.5;}
+.insight-text span{color:var(--accent);font-weight:600;}
+.insight-action button{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:5px 12px;font-family:var(--font);font-size:12px;font-weight:600;color:var(--text);cursor:pointer;margin-top:6px;}
+.hour-bar-wrap{display:flex;align-items:flex-end;gap:2px;height:50px;margin-top:8px;}
+.hour-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;}
+.hour-bar{width:100%;border-radius:3px 3px 0 0;background:var(--accent2);opacity:.15;min-height:2px;transition:all .3s;}
+.hour-bar.has-data{opacity:.9;}
+.hour-bar.peak{background:var(--accent);opacity:1;}
+.hour-tick{font-size:8px;color:var(--muted);font-weight:600;}
+.manage-task-item{margin:0 16px 8px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);display:flex;align-items:center;gap:12px;padding:14px 16px;}
+.manage-task-info{flex:1;min-width:0;}
+.manage-task-name{font-size:14px;font-weight:600;}
+.manage-task-meta{font-size:12px;color:var(--muted);margin-top:2px;}
+.manage-actions{display:flex;gap:6px;}
+.manage-btn{width:32px;height:32px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;transition:all .15s;}
+.manage-btn.del:hover{background:rgba(255,107,107,.15);border-color:var(--red);}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);z-index:50;display:flex;align-items:flex-end;justify-content:center;animation:fadeIn .15s;}
+.overlay.center{align-items:center;}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.modal{background:var(--surface);border-radius:24px 24px 0 0;width:100%;max-width:480px;padding:24px 20px 40px;max-height:92vh;overflow-y:auto;animation:slideUp .25s cubic-bezier(.4,0,.2,1);}
+.modal.card-modal{border-radius:20px;margin:16px;max-height:84vh;}
+@keyframes slideUp{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
+.modal-handle{width:36px;height:4px;background:var(--surface3);border-radius:999px;margin:0 auto 20px;}
+.modal-title{font-size:18px;font-weight:800;margin-bottom:4px;}
+.modal-sub{font-size:13px;color:var(--muted);margin-bottom:20px;}
+.form-group{margin-bottom:16px;}
+.form-label{font-size:12px;font-weight:700;letter-spacing:.5px;color:var(--muted);text-transform:uppercase;margin-bottom:6px;display:block;}
+.form-input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 14px;font-family:var(--font);font-size:15px;color:var(--text);outline:none;transition:border-color .15s;}
+.form-input:focus{border-color:var(--accent);}
+.form-input::placeholder{color:var(--muted);}
+.toggle-group{display:flex;gap:8px;flex-wrap:wrap;}
+.toggle-btn{flex:1;padding:10px;border-radius:10px;background:var(--surface2);border:1px solid var(--border);font-family:var(--font);font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;transition:all .15s;text-align:center;}
+.toggle-btn.active{background:rgba(255,107,179,.15);color:var(--accent);border-color:rgba(255,107,179,.4);}
+.btn-primary{width:100%;padding:14px;border-radius:14px;background:var(--accent);border:none;font-family:var(--font);font-size:15px;font-weight:700;color:#fff;cursor:pointer;transition:all .15s;margin-top:8px;display:block;text-align:center;}
+.btn-primary:hover{filter:brightness(1.1);}
+.btn-secondary{width:100%;padding:14px;border-radius:14px;background:var(--surface2);border:1px solid var(--border);font-family:var(--font);font-size:15px;font-weight:600;color:var(--text);cursor:pointer;transition:all .15s;margin-top:6px;display:block;text-align:center;}
+.btn-secondary:hover{background:var(--surface3);}
+.dist-day-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.dist-day-label{font-size:13px;font-weight:600;min-width:56px;color:var(--muted);}
+.dist-day-input{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-family:var(--font);font-size:14px;color:var(--text);outline:none;text-align:center;}
+.dist-day-input:focus{border-color:var(--accent);}
+.dist-total{font-size:13px;padding:10px 14px;border-radius:10px;margin-bottom:12px;font-weight:600;}
+.dist-total.ok{background:rgba(46,213,115,.1);color:var(--green);}
+.dist-total.over{background:rgba(255,107,107,.1);color:var(--red);}
+.option-list{display:flex;flex-direction:column;gap:8px;margin-top:4px;}
+.option-btn{width:100%;padding:13px 16px;border-radius:12px;background:var(--surface2);border:1px solid var(--border);font-family:var(--font);font-size:14px;font-weight:500;color:var(--text);cursor:pointer;transition:all .15s;text-align:left;display:flex;align-items:center;gap:10px;}
+.option-btn:hover{background:var(--surface3);}
+.option-btn .opt-icon{font-size:20px;flex-shrink:0;}
+.log-controls{display:flex;align-items:center;gap:12px;margin:16px 0;}
+.log-ctrl-btn{width:52px;height:52px;border-radius:16px;background:var(--surface2);border:1px solid var(--border);font-size:24px;color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:var(--font);transition:all .15s;}
+.log-ctrl-input{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px;font-family:var(--font);font-size:20px;font-weight:700;color:var(--text);outline:none;text-align:center;}
+.log-ctrl-input:focus{border-color:var(--accent);}
+.missed-task-info{background:var(--surface2);border-radius:12px;padding:12px 14px;margin-bottom:16px;}
+.missed-task-name{font-size:16px;font-weight:700;}
+.missed-task-time{font-size:13px;color:var(--red);margin-top:3px;}
+.sync-option{display:flex;align-items:center;gap:14px;padding:14px;background:var(--surface2);border:1px solid var(--border);border-radius:14px;cursor:pointer;transition:all .15s;margin-bottom:8px;}
+.sync-option:hover{background:var(--surface3);}
+.sync-icon-wrap{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;}
+.sync-option-info{flex:1;}
+.sync-option-title{font-size:14px;font-weight:700;}
+.sync-option-sub{font-size:12px;color:var(--muted);margin-top:2px;}
+.chip{display:inline-flex;align-items:center;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:2px 8px;font-size:11px;font-weight:600;color:var(--muted);}
+.chip.green{background:rgba(46,213,115,.1);color:var(--green);border-color:rgba(46,213,115,.2);}
+.chip.orange{background:rgba(255,107,179,.1);color:var(--accent);border-color:rgba(255,107,179,.2);}
+.wizard-steps{display:flex;gap:6px;margin-bottom:20px;}
+.wizard-step{height:3px;flex:1;border-radius:999px;background:var(--surface3);}
+.wizard-step.done{background:var(--accent);}
+.section-badge{display:inline-flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:4px 12px 4px 8px;font-size:12px;font-weight:600;color:var(--muted);margin:0 20px 12px;}
+.section-badge-dot{width:6px;height:6px;border-radius:50%;background:var(--accent);}
+.toast{position:fixed;top:60px;left:50%;transform:translateX(-50%);background:var(--surface3);color:var(--text);padding:10px 20px;border-radius:12px;font-size:13px;font-weight:600;z-index:200;animation:toastIn .2s ease;white-space:nowrap;border:1px solid var(--border);}
+.toast.success{background:rgba(46,213,115,.15);color:var(--green);border-color:rgba(46,213,115,.3);}
+.toast.error{background:rgba(255,107,107,.15);color:var(--red);border-color:rgba(255,107,107,.3);}
+@keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(-8px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+.data-textarea{width:100%;height:90px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:10px 12px;font-family:monospace;font-size:11px;color:var(--muted);resize:none;outline:none;}
+.data-textarea:focus{border-color:var(--accent);color:var(--text);}
+.day-reset-banner{margin:0 16px 12px;background:rgba(139,124,246,.12);border:1px solid rgba(139,124,246,.25);border-radius:14px;padding:12px 16px;display:flex;align-items:center;gap:10px;font-size:13px;color:var(--accent2);}
+.day-reset-banner b{font-weight:700;}
+
+/* ===== TASK DETAIL MODAL ===== */
+.detail-header{display:flex;align-items:center;gap:14px;margin-bottom:20px;}
+.detail-icon{width:52px;height:52px;border-radius:16px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;}
+.detail-title{font-size:19px;font-weight:800;line-height:1.2;}
+.detail-type-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;padding:3px 9px;border-radius:6px;margin-top:4px;}
+.detail-type-badge.goal{background:rgba(255,107,179,.12);color:var(--accent);border:1px solid rgba(255,107,179,.25);}
+.detail-type-badge.simple{background:rgba(46,213,115,.12);color:var(--green);border:1px solid rgba(46,213,115,.25);}
+
+.detail-meta-row{display:flex;gap:8px;margin-bottom:16px;}
+.detail-meta-box{flex:1;background:var(--surface2);border-radius:12px;padding:11px 12px;}
+.detail-meta-label{font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);margin-bottom:3px;}
+.detail-meta-val{font-size:13px;font-weight:700;color:var(--text);line-height:1.3;}
+.detail-meta-val.accent{color:var(--accent);}
+.detail-meta-val.green{color:var(--green);}
+.detail-meta-val.red{color:var(--red);}
+
+.detail-section{margin-bottom:18px;}
+.detail-section-title{font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:6px;}
+
+/* Timeline grid */
+.timeline-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;}
+.tl-col-head{font-size:9px;font-weight:700;color:var(--muted);text-align:center;padding:2px 0;letter-spacing:.3px;}
+.tl-cell{aspect-ratio:1;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;position:relative;cursor:default;}
+.tl-cell.tl-done{background:rgba(46,213,115,.2);color:var(--green);border:1px solid rgba(46,213,115,.3);}
+.tl-cell.tl-partial{background:rgba(255,107,179,.15);color:var(--accent);border:1px solid rgba(255,107,179,.25);}
+.tl-cell.tl-missed{background:rgba(255,107,107,.15);color:var(--red);border:1px solid rgba(255,107,107,.2);}
+.tl-cell.tl-today{outline:2px solid var(--accent);outline-offset:1px;}
+.tl-cell.tl-future{background:var(--surface3);color:var(--muted);border:1px solid transparent;}
+.tl-cell.tl-empty{background:transparent;border:none;}
+.tl-cell.tl-skipped{background:var(--surface3);color:var(--muted);border:1px dashed rgba(255,255,255,.1);}
+
+/* Missed list */
+.missed-day-list{display:flex;flex-direction:column;gap:6px;}
+.missed-day-item{display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(255,107,107,.07);border:1px solid rgba(255,107,107,.15);border-radius:10px;}
+.missed-day-dot{width:8px;height:8px;border-radius:50%;background:var(--red);flex-shrink:0;}
+.missed-day-info{flex:1;}
+.missed-day-date{font-size:13px;font-weight:700;color:var(--text);}
+.missed-day-detail{font-size:11px;color:var(--muted);margin-top:1px;}
+.missed-day-pct{font-size:12px;font-weight:700;color:var(--red);}
+
+/* Overall progress bar in detail */
+.detail-progress-bar{height:8px;background:var(--surface3);border-radius:999px;overflow:hidden;margin-top:6px;}
+.detail-progress-fill{height:100%;border-radius:999px;transition:width .5s ease;}
+
+/* Legend row */
+.legend-row{display:flex;gap:12px;flex-wrap:wrap;margin-top:6px;}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);}
+.legend-dot{width:10px;height:10px;border-radius:3px;}
+
+/* tap hint on task card */
+.task-card{cursor:pointer;}
+.task-card .tap-hint{font-size:10px;color:var(--muted);margin-top:4px;display:flex;align-items:center;gap:3px;opacity:.6;}
+
+/* ===== DATE STRIP ===== */
+.date-strip-wrap{position:sticky;top:98px;z-index:9;background:var(--bg);padding:0 0 10px;}
+.date-strip{display:flex;gap:8px;overflow-x:auto;padding:2px 16px 6px;scroll-behavior:smooth;-ms-overflow-style:none;scrollbar-width:none;}
+.date-strip::-webkit-scrollbar{display:none;}
+.date-pill{flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 12px;border-radius:14px;cursor:pointer;border:1.5px solid transparent;background:var(--surface);transition:all .18s;min-width:52px;}
+.date-pill:hover{background:var(--surface2);}
+.date-pill.selected{background:var(--accent);border-color:var(--accent);}
+.date-pill.selected .dp-dow{color:rgba(255,255,255,.75);}
+.date-pill.selected .dp-num{color:#fff;}
+.date-pill.is-today:not(.selected){border-color:rgba(255,107,179,.5);background:rgba(255,107,179,.08);}
+.dp-dow{font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);}
+.dp-num{font-size:18px;font-weight:800;color:var(--text);line-height:1;}
+.dp-dot-row{display:flex;gap:2px;min-height:6px;align-items:center;}
+.dp-dot{width:5px;height:5px;border-radius:50%;}
+.dp-dot.green{background:var(--green);}
+.dp-dot.orange{background:var(--accent);}
+.dp-dot.red{background:var(--red);}
+.dp-dot.future{background:var(--surface3);}
+
+/* ===== FUTURE / PAST DAY BANNER ===== */
+.day-banner{margin:0 16px 14px;border-radius:14px;padding:11px 16px;display:flex;align-items:center;gap:10px;font-size:13px;font-weight:600;}
+.day-banner.future{background:rgba(139,124,246,.12);border:1px solid rgba(139,124,246,.25);color:var(--accent2);}
+.day-banner.past{background:rgba(107,104,128,.10);border:1px solid rgba(107,104,128,.2);color:var(--muted);}
+.day-banner-icon{font-size:18px;}
+
+/* Future card preview */
+.task-card.preview{opacity:.85;cursor:default;}
+.task-card.preview:hover{background:var(--surface);}
+.goal-preview-amount{font-size:22px;font-weight:900;color:var(--accent);line-height:1;}
+.goal-preview-unit{font-size:12px;color:var(--muted);margin-top:1px;}
+.goal-preview-right{text-align:right;flex-shrink:0;}
+.goal-total-pill{display:inline-flex;align-items:center;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:4px 10px;font-size:11px;font-weight:700;color:var(--muted);margin-top:6px;}
+
+/* ===== MEDALS ===== */
+.medal-badge{display:inline-flex;align-items:center;gap:3px;border-radius:8px;padding:3px 8px;font-size:11px;font-weight:800;border:1px solid;}
+.medal-badge.bronze{background:rgba(180,100,30,.15);color:#cd7f32;border-color:rgba(180,100,30,.3);}
+.medal-badge.prata{background:rgba(160,160,180,.15);color:#a8a9ad;border-color:rgba(160,160,180,.35);}
+.medal-badge.ouro{background:rgba(255,200,0,.15);color:#c9a800;border-color:rgba(255,200,0,.35);}
+.medal-badge.platinum{background:rgba(100,220,255,.13);color:#3db8d8;border-color:rgba(100,220,255,.3);}
+.rank-task-row{display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--surface2);border-radius:12px;margin-bottom:8px;}
+.rank-task-name{flex:1;font-size:14px;font-weight:700;}
+.rank-medals{display:flex;gap:5px;flex-wrap:wrap;}
+.rank-medal-count{display:flex;align-items:center;gap:3px;font-size:12px;font-weight:800;padding:2px 7px;border-radius:7px;border:1px solid;}
+.rank-medal-count.bronze{background:rgba(180,100,30,.12);color:#cd7f32;border-color:rgba(180,100,30,.25);}
+.rank-medal-count.prata{background:rgba(160,160,180,.12);color:#a8a9ad;border-color:rgba(160,160,180,.3);}
+.rank-medal-count.ouro{background:rgba(255,200,0,.12);color:#c9a800;border-color:rgba(255,200,0,.3);}
+.rank-medal-count.platinum{background:rgba(100,220,255,.1);color:#3db8d8;border-color:rgba(100,220,255,.25);}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<input type="file" id="import-file" accept=".foco,.json" style="display:none" onchange="App.handleImportFile(event)">
+
+<script>
+const GDRIVE_FILENAME = 'foco-backup.foco';
+const GDRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
+
+const App = {
+  state: null,
+  gdriveToken: null,
+
+  defaultState() {
+    return { tasks:[], history:{}, view:'today', summaryPeriod:'daily', modal:null, wizard:null, selectedDate: null };
+  },
+
+  loadState() {
+    try {
+      const saved = localStorage.getItem('foco_v2');
+      this.state = saved ? JSON.parse(saved) : this.defaultState();
+    } catch(e) { this.state = this.defaultState(); }
+  },
+
+  save() { localStorage.setItem('foco_v2', JSON.stringify(this.state)); },
+
+  // ===================== HELPERS =====================
+  // BUGFIX: usa data LOCAL (não UTC) para evitar virar o dia às 21h em UTC-3
+  getToday() {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth()+1).padStart(2,'0');
+    const day = String(d.getDate()).padStart(2,'0');
+    return `${y}-${m}-${day}`;
+  },
+
+  uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,7); },
+
+  addDays(dateStr, n) {
+    const [y,m,d] = dateStr.split('-').map(Number);
+    const dt = new Date(y,m-1,d);
+    dt.setDate(dt.getDate()+n);
+    return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+  },
+
+  daysDiff(a, b) {
+    const parse = s => { const [y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d); };
+    return Math.round((parse(b)-parse(a))/86400000);
+  },
+
+  getNow() {
+    const d = new Date();
+    return d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0');
+  },
+
+  timeToMins(t) { const [h,m]=t.split(':').map(Number); return h*60+m; },
+
+  showToast(msg, type='') {
+    const old = document.querySelector('.toast'); if (old) old.remove();
+    const el = document.createElement('div'); el.className='toast '+type; el.textContent=msg;
+    document.body.appendChild(el); setTimeout(()=>el.remove(), 2800);
+  },
+
+  // ===================== TASK LOGIC =====================
+  getTaskDayData(taskId, date) {
+    return (this.state.history[date]||{})[taskId] || {completed:false,progress:0};
+  },
+  setTaskDayData(taskId, date, data) {
+    if (!this.state.history[date]) this.state.history[date]={};
+    this.state.history[date][taskId] = {...this.getTaskDayData(taskId,date),...data};
+  },
+  getTaskGoalForDay(task, date) {
+    if (task.type!=='goal') return 0;
+    const idx = this.daysDiff(task.startDate,date);
+    if (idx<0||idx>=task.dailyGoals.length) return 0;
+    // Calcula progresso real acumulado antes de hoje para descontar overflow
+    let actualBefore=0;
+    for(let i=0;i<idx;i++){
+      const d2=this.addDays(task.startDate,i);
+      actualBefore+=(this.getTaskDayData(task.id,d2).progress||0);
+    }
+    const plannedEnd=task.dailyGoals.slice(0,idx+1).reduce((a,b)=>a+b,0);
+    return Math.max(0, plannedEnd - actualBefore);
+  },
+  getWordsGoalForDay(task, date){
+    if(!task.wordsDailyGoals||!task.wordsDailyGoals.length)return 0;
+    const startDate=task.startDate||this.getToday();
+    const idx=this.daysDiff(startDate,date);
+    if(idx<0||idx>=task.wordsDailyGoals.length)return 0;
+    let actualBefore=0;
+    for(let i=0;i<idx;i++){
+      const d2=this.addDays(startDate,i);
+      actualBefore+=(this.getTaskDayData(task.id,d2).wordsProgress||0);
+    }
+    const plannedEnd=task.wordsDailyGoals.slice(0,idx+1).reduce((a,b)=>a+b,0);
+    return Math.max(0,plannedEnd-actualBefore);
+  },
+  calcWordsCumulative(task, date){
+    if(!task.wordsDailyGoals)return task.wordsOffset||0;
+    const startDate=task.startDate||this.getToday();
+    const idx=this.daysDiff(startDate,date);
+    let done=task.wordsOffset||0;
+    for(let i=0;i<=Math.min(idx,task.wordsDailyGoals.length-1);i++){
+      const d2=this.addDays(startDate,i);
+      done+=(this.getTaskDayData(task.id,d2).wordsProgress||0);
+    }
+    return done;
+  },
+  setWordsDay(i,val){
+    this.state.wizard.wordsDailyGoals[i]=val;
+    const totalW=parseInt(this.state.wizard.wordsTotal)||0,offsetW=parseInt(this.state.wizard.wordsOffset)||0;
+    const remaining=totalW-offsetW,sum=this.state.wizard.wordsDailyGoals.reduce((a,b)=>a+b,0),diff=sum-remaining;
+    const el=document.getElementById('dist-total-el');
+    if(el){el.className=`dist-total ${Math.abs(diff)<=1?'ok':'over'}`;el.textContent=Math.abs(diff)<=1?'✓ Total correto: '+sum+' palavras':(diff>0?'▲ Excedendo: ':'▼ Faltando: ')+Math.abs(diff)+' palavras';}
+  },
+  // medalha proporcional à meta do dia
+  getMedal(progress, dayGoal){
+    if(!dayGoal||progress<=0)return null;
+    if(progress>dayGoal)  return{cls:'platinum',icon:'💎',label:'Platinum'};
+    if(progress>=dayGoal) return{cls:'ouro',    icon:'🥇',label:'Ouro'};
+    if(progress>=dayGoal/2)return{cls:'prata',  icon:'🥈',label:'Prata'};
+    return                       {cls:'bronze', icon:'🥉',label:'Bronze'};
+  },
+  getMedalRanking(year, month){
+    // Retorna [{task, counts:{bronze,prata,ouro,platinum}, score}] ordenado por score
+    const pad=n=>String(n).padStart(2,'0');
+    const prefix=`${year}-${pad(month)}-`;
+    const daysInMonth=new Date(year,month,0).getDate();
+    return this.state.tasks
+      .filter(t=>t.type==='goal')
+      .map(t=>{
+        const counts={bronze:0,prata:0,ouro:0,platinum:0};
+        for(let d=1;d<=daysInMonth;d++){
+          const date=`${year}-${pad(month)}-${pad(d)}`;
+          const dayGoal=this.getTaskGoalForDay(t,date);
+          if(!dayGoal)continue;
+          const prog=(this.getTaskDayData(t.id,date).progress||0);
+          const m=this.getMedal(prog,dayGoal);
+          if(m)counts[m.cls]++;
+        }
+        const score=counts.platinum*4+counts.ouro*3+counts.prata*2+counts.bronze;
+        return{task:t,counts,score};
+      })
+      .filter(r=>r.score>0)
+      .sort((a,b)=>b.score-a.score);
+  },
+  isTaskActiveOnDate(task, date) {
+    if (!task.active) return false;
+    if (task.type==='goal') {
+      const idx=this.daysDiff(task.startDate,date);
+      return idx>=0&&idx<task.dailyGoals.length;
+    }
+    if (task.daysOfWeek) {
+      const [y,m,d]=date.split('-').map(Number);
+      return task.daysOfWeek.includes(new Date(y,m-1,d).getDay());
+    }
+    return true;
+  },
+  getTodayTasks() {
+    return this.state.tasks.filter(t=>this.isTaskActiveOnDate(t,this.getToday()));
+  },
+  getDailyCompletion(date) {
+    const tasks=this.state.tasks.filter(t=>this.isTaskActiveOnDate(t,date));
+    if (!tasks.length) return 0;
+    let pts=0;
+    tasks.forEach(t=>{
+      if (t.type==='simple'){
+        const d=this.getTaskDayData(t.id,date);
+        if (d.completed) pts++;
+      } else {
+        pts += this.getGoalCompletionFraction(t,date);
+      }
+    });
+    return Math.round((pts/tasks.length)*100);
+  },
+
+  isTaskDayDone(task, date) {
+    const d = this.getTaskDayData(task.id, date);
+    if (task.type === 'simple') return !!d.completed;
+    // For goals, only consider it done if it was explicitly finished (finishedTime or completed flag)
+    return !!d.finishedTime || !!d.completed;
+  },
+
+  getGoalCompletionFraction(task, date) {
+    const d = this.getTaskDayData(task.id, date);
+    const goal = this.getTaskGoalForDay(task, date) || 1;
+    const prog = d.progress || 0;
+    if (prog >= goal) {
+      // If reached goal but not marked finished, count slightly less than full to avoid counting as done
+      return (d.finishedTime || d.completed) ? 1 : 0.99;
+    }
+    return Math.min(1, prog / goal);
+  },
+
+  // ===================== FINISH TIME =====================
+  promptFinishTime(taskId, date) {
+    const data = this.getTaskDayData(taskId,date);
+    if (data.finishedTime) return;
+    setTimeout(()=>{ this.state.modal={type:'finishTime',taskId,date}; this.render(); },300);
+  },
+  saveFinishTime(taskId, date, time, timeSpent) {
+    const update = {};
+    if (time) update.finishedTime = time;
+    if (timeSpent) update.timeSpent = timeSpent;
+    if (Object.keys(update).length) { this.setTaskDayData(taskId,date,update); this.save(); }
+    this.closeModal(); this.render();
+  },
+  getBestTimeData() {
+    const weekDates=this.getWeekDates();
+    const hourCounts=Array(24).fill(0); let total=0;
+    this.state.tasks.forEach(task=>{
+      weekDates.forEach(date=>{
+        const d=this.getTaskDayData(task.id,date);
+        const t=d.finishedTime||d.completedAt;
+        if (t&&typeof t==='string'&&t.includes(':')){
+          const h=parseInt(t.split(':')[0]);
+          if (h>=0&&h<24){hourCounts[h]++;total++;}
+        }
+      });
+    });
+    return {hourCounts,total};
+  },
+  getTimeSpentByTask() {
+    // Returns array of {task, totalMins, sessions} sorted by totalMins desc
+    const allDates=Object.keys(this.state.history);
+    return this.state.tasks.map(task=>{
+      let totalMins=0,sessions=0;
+      allDates.forEach(date=>{
+        const d=this.getTaskDayData(task.id,date);
+        if(d.timeSpent){totalMins+=d.timeSpent;sessions++;}
+      });
+      return{task,totalMins,sessions};
+    }).filter(x=>x.totalMins>0).sort((a,b)=>b.totalMins-a.totalMins);
+  },
+  fmtMins(mins){const h=Math.floor(mins/60),m=mins%60;return h>0?(h+'h'+(m>0?' '+m+'min':'')):(m+'min');},
+
+  // ===================== STATS =====================
+  getWeekDates() {
+    const today=this.getToday();
+    const [y,m,d]=today.split('-').map(Number);
+    const dt=new Date(y,m-1,d);
+    const monday=new Date(dt); monday.setDate(dt.getDate()-((dt.getDay()+6)%7));
+    return Array.from({length:7},(_,i)=>{
+      const dd=new Date(monday); dd.setDate(monday.getDate()+i);
+      return `${dd.getFullYear()}-${String(dd.getMonth()+1).padStart(2,'0')}-${String(dd.getDate()).padStart(2,'0')}`;
+    });
+  },
+  getMonthDates() {
+    const d=new Date(); const y=d.getFullYear(),mo=d.getMonth();
+    const dim=new Date(y,mo+1,0).getDate();
+    return Array.from({length:dim},(_,i)=>`${y}-${String(mo+1).padStart(2,'0')}-${String(i+1).padStart(2,'0')}`);
+  },
+  getMissedInsights() {
+    const weekDates=this.getWeekDates(), today=this.getToday();
+    return this.state.tasks.filter(t=>t.active).reduce((acc,task)=>{
+      let missed=0,total=0;
+      weekDates.forEach(date=>{
+        if (date>=today||!this.isTaskActiveOnDate(task,date)) return;
+        total++;
+        const d=this.getTaskDayData(task.id,date);
+        if (task.type==='simple'?!d.completed:(d.progress||0)<this.getTaskGoalForDay(task,date)) missed++;
+      });
+      if (total>=2&&missed>=2) acc.push({task,missed,total});
+      return acc;
+    },[]);
+  },
+  getCurrentStreak() {
+    let streak=0, date=this.getToday();
+    for (let i=0;i<60;i++) {
+      const tasks=this.state.tasks.filter(t=>this.isTaskActiveOnDate(t,date));
+      if (tasks.length&&this.getDailyCompletion(date)>=80) streak++;
+      else if (date<this.getToday()) break;
+      date=this.addDays(date,-1);
+    }
+    return streak;
+  },
+
+  // ===================== RENDER MAIN =====================
+  render() {
+    document.getElementById('app').innerHTML=`
+      ${this.renderView()}
+      <nav class="bottom-nav">
+        ${this.navBtn('today','📋','Hoje')}
+        ${this.navBtn('summary','📊','Resumo')}
+        ${this.navBtn('manage','⚙️','Tarefas')}
+        ${this.navBtn('medals','🏅','Medalhas')}
+        <button class="nav-btn" onclick="App.openSync()" style="${this.state.view==='sync'?'color:var(--accent)':''}">
+          <span class="nav-icon">🔄</span><span class="nav-label">Sincronizar</span>
+        </button>
+      </nav>
+      ${this.state.view==='today'?`<button class="fab" onclick="App.openAddTask()">+</button>`:''}
+      ${this.state.modal?this.renderModal():''}
+    `;
+  },
+  navBtn(v,icon,label) {
+    return `<button class="nav-btn ${this.state.view===v?'active':''}" onclick="App.setView('${v}')">
+      <span class="nav-icon">${icon}</span><span class="nav-label">${label}</span></button>`;
+  },
+  setView(v){this.state.view=v;this.render();},
+  renderView(){
+    return {today:()=>this.renderToday(),summary:()=>this.renderSummary(),manage:()=>this.renderManage(),medals:()=>this.renderMedalsView()}[this.state.view]?.()??'';
+  },
+
+  // ===================== DATE NAVIGATION =====================
+  getSelectedDate() {
+    return this.state.selectedDate || this.getToday();
+  },
+  selectDate(date) {
+    this.state.selectedDate = date;
+    this.render();
+    // Scroll selected pill into view after render
+    setTimeout(() => {
+      const el = document.querySelector('.date-pill.selected');
+      if (el) el.scrollIntoView({behavior:'smooth', block:'nearest', inline:'center'});
+    }, 50);
+  },
+  goToToday() {
+    this.state.selectedDate = this.getToday();
+    this.render();
+    setTimeout(() => {
+      const el = document.querySelector('.date-pill.selected');
+      if (el) el.scrollIntoView({behavior:'smooth', block:'nearest', inline:'center'});
+    }, 50);
+  },
+
+  renderDateStrip() {
+    const today = this.getToday();
+    const selected = this.getSelectedDate();
+    // Show 10 days past + today + 20 future = 31 days
+    const days = Array.from({length:31}, (_,i) => this.addDays(today, i-10));
+    const dowShort = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+
+    const pills = days.map(date => {
+      const [y,m,d] = date.split('-').map(Number);
+      const dow = new Date(y,m-1,d).getDay();
+      const dayNum = d;
+      const isToday = date === today;
+      const isSel = date === selected;
+      const isFuture = date > today;
+      const tasks = this.state.tasks.filter(t => this.isTaskActiveOnDate(t, date));
+      let dotHtml = '';
+      if (!isFuture && tasks.length > 0) {
+        const pct = this.getDailyCompletion(date);
+        const color = pct >= 80 ? 'green' : pct >= 40 ? 'orange' : 'red';
+        dotHtml = `<div class="dp-dot ${color}"></div>`;
+      } else if (isFuture && tasks.length > 0) {
+        dotHtml = `<div class="dp-dot future"></div>`;
+      }
+      return `<div class="date-pill ${isSel?'selected':''} ${isToday&&!isSel?'is-today':''}" onclick="App.selectDate('${date}')">
+        <div class="dp-dow">${isToday && !isSel ? 'Hoje' : dowShort[dow]}</div>
+        <div class="dp-num">${dayNum}</div>
+        <div class="dp-dot-row">${dotHtml}</div>
+      </div>`;
+    }).join('');
+
+    return `<div class="date-strip-wrap">
+      <div class="date-strip" id="date-strip">${pills}</div>
+    </div>`;
+  },
+
+  // ===================== TODAY VIEW =====================
+  renderToday() {
+    const today = this.getToday();
+    const date = this.getSelectedDate();
+    const isFuture = date > today;
+    const isPast = date < today;
+    const isToday = date === today;
+
+    const tasks = this.state.tasks.filter(t => this.isTaskActiveOnDate(t, date));
+    const pct = isToday || isPast ? this.getDailyCompletion(date) : this.calcFutureProgress(date, tasks);
+    const done = tasks.filter(t => {
+      const d = this.getTaskDayData(t.id, date);
+      return t.type==='simple' ? d.completed : (d.progress||0) >= (this.getTaskGoalForDay(t,date)||1);
+    }).length;
+
+    const C = 2*Math.PI*52, offset = C - (pct/100)*C;
+    const [y,m,d] = date.split('-').map(Number);
+    const dtObj = new Date(y,m-1,d);
+    const dateLabel = dtObj.toLocaleDateString('pt-BR', {weekday:'long', day:'numeric', month:'long'});
+
+    // Ring color: future = purple, past = muted, today = accent
+    const ringColor = isFuture ? 'var(--accent2)' : isPast ? (pct>=80?'var(--green)':'var(--accent)') : 'var(--accent)';
+    const ringLabel = isFuture ? 'planejado' : 'concluído';
+
+    return `<div class="view" id="today-view">
+      <div class="header">
+        <div class="header-left">
+          <h1>Foco<span>.</span></h1>
+          <p>${isToday ? dateLabel : dateLabel + (isFuture?' · prévia':' · histórico')}</p>
+        </div>
+        <div class="header-btns">
+          ${this.getMissedInsights().length>0 && isToday ? `<div class="header-btn" onclick="App.openInsights()">💡</div>` : ''}
+          ${!isToday ? `<div class="header-btn" onclick="App.goToToday()" title="Ir para hoje" style="font-size:13px;font-weight:700;color:var(--accent)">Hoje</div>` : ''}
+        </div>
+      </div>
+
+      ${this.renderDateStrip()}
+
+      <div class="ring-section">
+        <div class="ring-wrap">
+          <svg width="140" height="140" viewBox="0 0 120 120">
+            <circle class="ring-bg" cx="60" cy="60" r="52"/>
+            <circle class="ring-fill" cx="60" cy="60" r="52"
+              stroke-dasharray="${C}" stroke-dashoffset="${offset}"
+              style="stroke:${ringColor};${pct===0?'opacity:0':''}"/>
+          </svg>
+          <div class="ring-center">
+            <div class="ring-pct" style="color:${ringColor}">${isFuture ? tasks.length + '<br><span style="font-size:14px;font-weight:600">tarefas</span>' : pct+'%'}</div>
+            ${!isFuture ? `<div class="ring-label">${ringLabel}</div>` : ''}
+          </div>
+        </div>
+        <div class="ring-meta">
+          ${isFuture
+            ? `<b>${tasks.length}</b> tarefa${tasks.length!==1?'s':''} planejada${tasks.length!==1?'s':''}`
+            : `<b>${done}</b> de <b>${tasks.length}</b> tarefa${tasks.length!==1?'s':''}`}
+        </div>
+      </div>
+
+      ${this.renderDayBanner(date, today, isFuture, isPast, tasks)}
+      ${this.renderDayTasks(tasks, date, isFuture, isPast)}
+    </div>`;
+  },
+
+  calcFutureProgress(date, tasks) {
+    // For future: show % of tasks that have goals defined (always 0 actual progress)
+    return 0;
+  },
+
+  renderDayBanner(date, today, isFuture, isPast, tasks) {
+    if (!isFuture && !isPast) return '';
+    const [y,m,d] = date.split('-').map(Number);
+    const dtObj = new Date(y,m-1,d);
+    const dateStr = dtObj.toLocaleDateString('pt-BR', {weekday:'long', day:'numeric', month:'short'});
+    if (isFuture) {
+      const goalSummary = tasks
+        .filter(t => t.type === 'goal')
+        .map(t => `${this.getTaskGoalForDay(t,date)} ${t.goalUnit}`)
+        .join(' · ');
+      return `<div class="day-banner future">
+        <span class="day-banner-icon">🔭</span>
+        <div>
+          <b>Prévia — ${dateStr}</b>
+          ${goalSummary ? `<div style="font-size:11px;margin-top:2px;color:var(--accent2);opacity:.8">${goalSummary}</div>` : ''}
+        </div>
+      </div>`;
+    } else {
+      const pct = this.getDailyCompletion(date);
+      const icon = pct >= 80 ? '✅' : pct >= 40 ? '📊' : '❌';
+      return `<div class="day-banner past">
+        <span class="day-banner-icon">${icon}</span>
+        <div><b>${dateStr}</b><span style="margin-left:8px;color:${pct>=80?'var(--green)':pct>=40?'var(--accent)':'var(--red)'}">${pct}% concluído</span></div>
+      </div>`;
+    }
+  },
+
+  renderDayTasks(tasks, date, isFuture, isPast) {
+    if (!tasks.length) {
+      return `<div class="empty-state"><div class="emoji">${isFuture?'📅':'✨'}</div>
+        <p>${isFuture?'Nenhuma tarefa planejada<br>para este dia.':'Nenhuma tarefa neste dia.'}</p></div>`;
+    }
+    const nowMins = this.timeToMins(this.getNow());
+
+    if (isFuture) {
+      // Future: read-only preview grouped by type
+      const goalTasks = tasks.filter(t => t.type === 'goal');
+      const simpleTasks = tasks.filter(t => t.type === 'simple');
+      let html = '';
+      if (goalTasks.length) {
+        html += `<div class="section-badge"><div class="section-badge-dot" style="background:var(--accent2)"></div>Metas do dia</div>
+          <div class="tasks-list">`;
+        goalTasks.forEach(t => { html += this.renderFutureGoalCard(t, date); });
+        html += `</div>`;
+      }
+      if (simpleTasks.length) {
+        html += `<div class="section-badge" style="margin-top:${goalTasks.length?16:0}px;"><div class="section-badge-dot" style="background:var(--muted)"></div>Tarefas simples</div>
+          <div class="tasks-list">`;
+        simpleTasks.forEach(t => { html += this.renderFutureSimpleCard(t, date); });
+        html += `</div>`;
+      }
+      return html;
+    }
+
+    // Past or today: same interactive cards
+    const today = this.getToday();
+    const pending = tasks.filter(t => !this.isTaskDayDone(t,date));
+    const doneList = tasks.filter(t => this.isTaskDayDone(t,date));
+    let html = '';
+    if (pending.length) {
+      html += `<div class="section-badge"><div class="section-badge-dot"></div>${isPast?'Não concluídas':'Pendentes'} (${pending.length})</div><div class="tasks-list">`;
+      pending.forEach(t => { html += this.renderTaskCard(t, date, nowMins); });
+      html += `</div>`;
+    }
+    if (doneList.length) {
+      html += `<div class="section-badge" style="margin-top:${pending.length?16:0}px;"><div class="section-badge-dot" style="background:var(--green)"></div>Concluídas (${doneList.length})</div><div class="tasks-list">`;
+      doneList.forEach(t => { html += this.renderTaskCard(t, date, nowMins); });
+      html += `</div>`;
+    }
+    return html;
+  },
+
+  renderFutureGoalCard(task, date) {
+    const goal = this.getTaskGoalForDay(task, date);
+    const idx = this.daysDiff(task.startDate, date);
+    const startOffset = task.startOffset||0;
+    const totalBook = task.totalBook||task.dailyGoals.reduce((a,b)=>a+b,0)+startOffset;
+    const totalDays = task.dailyGoals.length;
+    // Cumulative pages read up to and including this day (absolute)
+    const cumulativeThisDay = startOffset + task.dailyGoals.slice(0, idx+1).reduce((a,b)=>a+b,0);
+    const absStart = startOffset + task.dailyGoals.slice(0,idx).reduce((a,b)=>a+b,0) + 1;
+    const absEnd = absStart + goal - 1;
+    const globalPct = Math.round((cumulativeThisDay/totalBook)*100);
+    return `<div class="task-card goal-card preview" style="cursor:default">
+      <div class="task-body">
+        <div class="task-name">${task.name}</div>
+        <div class="task-sub">
+          <span class="chip orange">Dia ${idx+1}/${totalDays}</span>
+          ${task.schedule==='fixed'?`<span class="task-time-badge">⏰ ${task.scheduledTime}</span>`:`<span class="task-time-badge">🔄 Flexível</span>`}
+          ${task.goalUnit!=='min'?`<span class="task-time-badge" style="background:var(--surface3)">📖 ${absStart}–${absEnd}</span>`:''}
+        </div>
+        <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-top:10px;">
+          <div>
+            <div class="goal-preview-amount">${goal}</div>
+            <div class="goal-preview-unit">${task.goalUnit} neste dia</div>
+          </div>
+          <div style="text-align:right">
+            <div class="goal-total-pill">📚 ${cumulativeThisDay}/${totalBook} ${task.goalUnit} acumulado</div>
+          </div>
+        </div>
+        <div style="margin-top:10px;">
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:4px">
+            <span>Progresso geral do livro ao fim do dia</span><span style="color:var(--accent2)">${globalPct}%</span>
+          </div>
+          <div class="goal-bar"><div class="goal-bar-fill" style="width:${globalPct}%;background:var(--accent2)"></div></div>
+          <div style="font-size:10px;color:var(--muted);margin-top:3px;text-align:right">dia ${idx+1} de ${totalDays}</div>
+        </div>
+      </div>
+    </div>`;
+  },
+
+  renderFutureSimpleCard(task, date) {
+    return `<div class="task-card preview" style="cursor:default">
+      <div class="check-btn" style="opacity:.35;cursor:default;border-color:var(--surface3)"></div>
+      <div class="task-body">
+        <div class="task-name">${task.name}</div>
+        <div class="task-sub">
+          ${task.schedule==='fixed'?`<span class="task-time-badge">⏰ ${task.scheduledTime}</span>`:`<span class="task-time-badge">🔄 Flexível</span>`}
+        </div>
+      </div>
+    </div>`;
+  },
+
+  renderTodayTasks(tasks,today) {
+    return this.renderDayTasks(tasks, today, false, false);
+  },
+
+  renderTaskCard(task,date,nowMins) {
+    const data=this.getTaskDayData(task.id,date);
+    const isToday=date===this.getToday();
+    if (task.type==='simple') {
+      const checked=data.completed;
+      let timeBadge='',overdueClass='';
+      if (task.schedule==='fixed'&&task.scheduledTime) {
+        const isLate=isToday&&!checked&&nowMins>this.timeToMins(task.scheduledTime)+15;
+        overdueClass=isLate?'overdue':'';
+        timeBadge=`<span class="task-time-badge ${isLate?'late':''}">⏰ ${task.scheduledTime}</span>`;
+      } else {
+        timeBadge=`<span class="task-time-badge">🔄 Flexível</span>`;
+      }
+      const ftBadge=data.finishedTime?`<span class="done-time-chip">✓ ${data.finishedTime}</span>`:'';
+      const hasMinutes=!!(task.dailyMinutes>0);
+      const hasWords=!!(task.wordsDailyGoals&&task.wordsDailyGoals.length);
+      const minutesDone=data.timeSpent||0;
+      const minutesPct=hasMinutes?Math.min(100,Math.round(minutesDone/task.dailyMinutes*100)):0;
+      const wordsGoalToday=hasWords?this.getWordsGoalForDay(task,date):0;
+      const wordsDone=data.wordsProgress||0;
+      const wordsPct=wordsGoalToday>0?Math.min(100,Math.round(wordsDone/wordsGoalToday*100)):0;
+      const wordsCumulative=hasWords?this.calcWordsCumulative(task,date):0;
+      return `<div class="task-card ${checked?'done':''} ${overdueClass}">
+        <div class="check-btn ${checked?'checked':''}" onclick="App.toggleTask('${task.id}','${date}')">
+          ${checked?'✓':''}
+        </div>
+        <div class="task-body" onclick="App.openTaskDetail('${task.id}')" style="cursor:pointer">
+          <div class="task-name">${task.name}</div>
+          <div class="task-sub">${timeBadge}${ftBadge}</div>
+          ${(hasMinutes||hasWords)?`
+          <div class="goal-bar-wrap" style="margin-top:8px">
+            ${hasMinutes?`
+            <div class="goal-bar-top">
+              <span>⏱ ${minutesDone}/${task.dailyMinutes} min</span>
+              <span style="color:var(--muted);font-size:10px"><b style="color:var(--accent)">${minutesPct}%</b></span>
+            </div>
+            <div class="goal-bar"><div class="goal-bar-fill ${minutesPct>=100?'full':''}" style="width:${minutesPct}%"></div></div>`:''}
+            ${hasWords?`
+            <div class="goal-bar-top" ${hasMinutes?'style="margin-top:8px"':''}>
+              <span>📝 ${wordsDone}/${wordsGoalToday} palavras hoje</span>
+              <span style="color:var(--muted);font-size:10px">${wordsCumulative}/${task.wordsTotal} total · <b style="color:var(--accent2)">${wordsPct}%</b></span>
+            </div>
+            <div class="goal-bar"><div class="goal-bar-fill ${wordsPct>=100?'full':''}" style="width:${wordsPct}%;background:var(--accent2)"></div></div>`:''}
+          </div>`:''}
+          <div class="tap-hint">ℹ️ Ver detalhes e histórico</div>
+        </div>
+        <div class="task-right">
+          ${checked?`<button class="revert-btn" onclick="event.stopPropagation();App.revertTask('${task.id}','${date}')">↩ Reverter</button>`:hasWords?`<button class="log-btn" onclick="event.stopPropagation();App.openLogWords('${task.id}')">+ Palavras</button>`:''}
+        </div>
+      </div>`;
+    } else {
+      const goal=this.getTaskGoalForDay(task,date),progress=data.progress||0;
+      const pct=goal>0?Math.min(100,Math.round((progress/goal)*100)):0;
+      const isFull=pct>=100 && (data.finishedTime || data.completed);
+      const idx=this.daysDiff(task.startDate,date);
+      const ftBadge=data.finishedTime&&pct>=100?`<span class="done-time-chip">✓ ${data.finishedTime}</span>`:'';
+      const timeSpentBadge=data.timeSpent&&isFull?`<span class="done-time-chip" style="background:rgba(139,124,246,.12);color:var(--accent2);border-color:rgba(139,124,246,.25)">⏱ ${data.timeSpent>=60?(Math.floor(data.timeSpent/60)+'h'+(data.timeSpent%60>0?data.timeSpent%60+'min':'')):data.timeSpent+'min'}</span>`:'';
+
+      // startOffset: pages already done before the task was created
+      const startOffset=task.startOffset||0;
+      const totalBook=task.totalBook||task.dailyGoals.reduce((a,b)=>a+b,0)+startOffset;
+
+      // Cumulative done in previous days of THIS task (not counting offset)
+      let cumDaysBefore=0;
+      for(let i=0;i<idx;i++){
+        const d2=this.addDays(task.startDate,i);
+        const dd=this.getTaskDayData(task.id,d2);
+        cumDaysBefore+=(dd.progress||0);
+      }
+      // Absolute position range for today's goal
+      const absRangeStart=startOffset+cumDaysBefore+1;
+      const absRangeEnd=startOffset+cumDaysBefore+goal;
+      const rangeLabel=`📖 ${absRangeStart}–${absRangeEnd}`;
+
+      // Global progress bar: totalRead (offset + all days done) / totalBook
+      const totalReadSoFar=startOffset+cumDaysBefore+progress;
+      const globalPct=totalBook>0?Math.min(100,Math.round((totalReadSoFar/totalBook)*100)):pct;
+      const globalPctDisplay=totalBook>0?globalPct:pct;
+      const displayPct = isFull ? 100 : pct;
+
+      // Toggle de exibição: páginas ou capítulo
+      if(!this.state.barModes)this.state.barModes={};
+      const barMode=this.state.barModes[task.id]||'pages';
+      const cp=task.chapterPages;
+      const hasChapters=cp&&cp.length>0;
+      // Capítulo atual baseado em totalReadSoFar
+      let curChapNum=null,totalChaps=null;
+      if(hasChapters){
+        totalChaps=cp.length;
+        curChapNum=1;
+        for(let j=0;j<cp.length;j++){if(cp[j]>0&&cp[j]<=totalReadSoFar)curChapNum=j+1;}
+      }
+      const barLabel=(!hasChapters||barMode==='pages')
+        ?`${totalReadSoFar}/${totalBook} ${task.goalUnit}`
+        :`Cap. ${curChapNum}/${totalChaps}`;
+      const barToggle=hasChapters?` onclick="event.stopPropagation();App.toggleBarMode('${task.id}')" style="cursor:pointer;user-select:none" title="Clique para alternar"`:'';
+      const medal=this.getMedal(progress,goal);
+      const medalBadge=medal?`<span class="medal-badge ${medal.cls}">${medal.icon} ${medal.label}</span>`:'';
+
+      return `<div class="task-card goal-card ${isFull?'done':''}">
+        <div class="task-body" onclick="App.openTaskDetail('${task.id}')" style="cursor:pointer">
+          <div class="task-name">${task.name}</div>
+          <div class="task-sub">
+            <span class="chip ${isFull?'green':'orange'}">Dia ${idx+1}/${task.dailyGoals.length}</span>
+            ${task.schedule==='fixed'?`<span class="task-time-badge">⏰ ${task.scheduledTime}</span>`:`<span class="task-time-badge">🔄 Flexível</span>`}
+            ${task.goalUnit!=='min'?`<span class="task-time-badge" style="background:var(--surface3)">${rangeLabel} ${task.goalUnit}</span>`:''}
+            ${medalBadge}${ftBadge}${timeSpentBadge}
+          </div>
+          <div class="goal-bar-wrap">
+            <div class="goal-bar-top">
+              <span>${progress} / ${goal} ${task.goalUnit} hoje</span>
+              <span style="color:var(--muted);font-size:10px"${barToggle}>${barLabel}${barToggle?` <span style="font-size:9px;opacity:.5">↕</span>`:''} · <b style="color:var(--accent)">${displayPct}%</b></span>
+            </div>
+            <div class="goal-bar"><div class="goal-bar-fill ${displayPct>=100?'full':''}" style="width:${displayPct}%"></div></div>
+          </div>
+          <div class="tap-hint">ℹ️ Ver datas, calendário e atrasos</div>
+        </div>
+        <div class="task-right">
+          ${!isFull?`<button class="log-btn" onclick="App.openLogProgress('${task.id}')">+ Registrar</button>`:`<button class="revert-btn" onclick="event.stopPropagation();App.revertTask('${task.id}','${date}')">↩ Reverter</button>`}
+        </div>
+      </div>`;
+    }
+  },
+
+  toggleTask(taskId,date) {
+    const data=this.getTaskDayData(taskId,date);
+    const wasCompleted=data.completed;
+    this.setTaskDayData(taskId,date,{
+      completed:!wasCompleted,
+      completedAt:!wasCompleted?this.getNow():null,
+      finishedTime:wasCompleted?null:data.finishedTime
+    });
+    this.save();
+    if (!wasCompleted) this.promptFinishTime(taskId,date);
+    else this.render();
+  },
+
+  revertTask(taskId,date) {
+    const task = this.state.tasks.find(t=>t.id===taskId);
+    const reset = {
+      completed: false,
+      completedAt: null,
+      finishedTime: null,
+      progress: 0,
+      wordsProgress: 0,
+      altProgress: null,
+      timeSpent: null,
+    };
+    this.setTaskDayData(taskId,date,reset);
+    // Debug: log state after revert to diagnose pct mismatch
+    const d = this.getTaskDayData(taskId,date);
+    const goalFrac = task && task.type==='goal' ? this.getGoalCompletionFraction(task,date) : (d.completed?1:0);
+    console.log('revertTask ->', {taskId,date,data:d,goalFrac, dailyPct:this.getDailyCompletion(date)});
+    // Ensure any modal (finishTime, etc.) is closed when reverting
+    this.state.modal = null;
+    this.state.wizard = null;
+    this.save();
+    this.render();
+    this.showToast('Tarefa revertida', 'success');
+  },
+
+  // ===================== SUMMARY =====================
+  renderSummary() {
+    const p=this.state.summaryPeriod;
+    return `<div class="view">
+      <div class="header">
+        <div class="header-left"><h1>Resumo<span>.</span></h1><p>Acompanhamento de progresso</p></div>
+      </div>
+      <div class="period-tabs">
+        ${['daily','weekly','monthly'].map(v=>`<button class="period-tab ${p===v?'active':''}" onclick="App.setPeriod('${v}')">${{daily:'Hoje',weekly:'Semana',monthly:'Mês'}[v]}</button>`).join('')}
+      </div>
+      ${p==='daily'?this.renderDailySummary():p==='weekly'?this.renderWeeklySummary():this.renderMonthlySummary()}
+    </div>`;
+  },
+  setPeriod(p){this.state.summaryPeriod=p;this.render();},
+
+  renderDailySummary() {
+    const today=this.getToday();
+    const tasks=this.state.tasks.filter(t=>this.isTaskActiveOnDate(t,today));
+    const pct=this.getDailyCompletion(today);
+    const goalTasks=tasks.filter(t=>t.type==='goal');
+    return `
+      <div class="summary-card">
+        <div class="summary-card-title">📅 Hoje</div>
+        <div class="stat-row">
+          <div class="stat-box"><div class="stat-val">${pct}%</div><div class="stat-lbl">Concluído</div></div>
+          <div class="stat-box"><div class="stat-val">${tasks.length}</div><div class="stat-lbl">Tarefas</div></div>
+          <div class="stat-box"><div class="stat-val">${tasks.filter(t=>this.isTaskDayDone(t,today)).length}</div><div class="stat-lbl">Feitas</div></div>
+        </div>
+      </div>
+      ${goalTasks.length?`<div class="summary-card">
+        <div class="summary-card-title">🎯 Metas do dia</div>
+        ${goalTasks.map(t=>{const d=this.getTaskDayData(t.id,today);const g=this.getTaskGoalForDay(t,today);const p2=d.progress||0;
+          return `<div style="margin-bottom:12px">
+            <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px"><b>${t.name}</b><span style="color:var(--accent)">${p2}/${g} ${t.goalUnit}</span></div>
+            <div class="goal-bar"><div class="goal-bar-fill ${p2>=g?'full':''}" style="width:${g>0?Math.min(100,Math.round(p2/g*100)):0}%"></div></div>
+          </div>`;}).join('')}
+      </div>`:''}`;
+  },
+
+  renderWeeklySummary() {
+    const dates=this.getWeekDates(),today=this.getToday();
+    const dayLabels=['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
+    const completions=dates.map(d=>this.getDailyCompletion(d));
+    const avg=completions.reduce((a,b)=>a+b,0)/7;
+    const maxPct=Math.max(...completions,1);
+    const insights=this.getMissedInsights();
+    const {hourCounts,total}=this.getBestTimeData();
+    const maxHour=Math.max(...hourCounts,1);
+    const peakHour=hourCounts.indexOf(Math.max(...hourCounts));
+    const hoursToShow=Array.from({length:19},(_,i)=>i+5);
+    return `
+      <div class="summary-card">
+        <div class="summary-card-title">📈 Esta semana</div>
+        <div class="stat-row">
+          <div class="stat-box"><div class="stat-val">${Math.round(avg)}%</div><div class="stat-lbl">Média</div></div>
+          <div class="stat-box"><div class="stat-val">${Math.max(...completions)}%</div><div class="stat-lbl">Melhor dia</div></div>
+          <div class="stat-box"><div class="stat-val">${completions.filter(v=>v>=80).length}</div><div class="stat-lbl">Dias 80%+</div></div>
+        </div>
+        <div class="day-bar-chart" style="margin-top:16px;">
+          ${dates.map((d,i)=>{const pct=completions[i],isFuture=d>today,isToday=d===today;const h=isFuture?4:Math.max(4,Math.round((pct/maxPct)*60));
+            return `<div class="day-bar-col">
+              <div class="day-bar-pct">${isFuture?'':pct+'%'}</div>
+              <div class="day-bar ${pct>0&&!isFuture?'filled':''}" style="height:${h}px;${isToday?'background:var(--accent2)':''}"></div>
+              <div class="day-bar-label" style="${isToday?'color:var(--text)':''}">${dayLabels[i]}</div>
+            </div>`;}).join('')}
+        </div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-card-title">⏰ Melhor horário para concluir</div>
+        ${total===0?`<div style="font-size:13px;color:var(--muted);text-align:center;padding:12px 0">
+            Ao concluir tarefas, o app vai perguntar o horário.<br>
+            <span style="font-size:11px">Com dados suficientes, seu pico de produtividade aparece aqui.</span></div>`:`
+          <div style="font-size:13px;color:var(--muted);margin-bottom:8px">
+            Pico: <b style="color:var(--accent)">${peakHour}h–${peakHour+1}h</b> (${hourCounts[peakHour]} conclusão${hourCounts[peakHour]!==1?'ões':''})
+          </div>
+          <div class="hour-bar-wrap">
+            ${hoursToShow.map(h=>{const count=hourCounts[h];const hPct=Math.max(4,Math.round((count/maxHour)*48));const isPeak=h===peakHour&&count>0;
+              return `<div class="hour-col">
+                <div class="hour-bar ${count>0?'has-data':''} ${isPeak?'peak':''}" style="height:${hPct}px"></div>
+                ${h%3===0?`<div class="hour-tick">${h}h</div>`:'<div class="hour-tick"></div>'}
+              </div>`;}).join('')}
+          </div>`}
+      </div>
+      ${insights.length?`<div class="summary-card">
+        <div class="summary-card-title">💡 Sugestões</div>
+        ${insights.map(({task,missed,total})=>`
+          <div class="insight-item">
+            <span class="insight-icon">⚠️</span>
+            <div><div class="insight-text"><span>${task.name}</span> não concluída em ${missed} de ${total} dias.</div>
+            <div class="insight-action"><button onclick="App.openSuggestion('${task.id}')">Ver opções</button></div></div>
+          </div>`).join('')}
+      </div>`:``}
+      ${(()=>{const tsd=this.getTimeSpentByTask();if(!tsd.length)return'';const maxM=tsd[0].totalMins;return`<div class="summary-card">
+        <div class="summary-card-title">⏱️ Tempo por matéria (total registrado)</div>
+        ${tsd.map(({task,totalMins,sessions})=>{const pct=Math.round((totalMins/maxM)*100);return`<div style="margin-bottom:12px">
+          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px">
+            <b>${task.name}</b>
+            <span style="color:var(--accent)">${this.fmtMins(totalMins)}</span>
+          </div>
+          <div class="goal-bar"><div class="goal-bar-fill" style="width:${pct}%;background:var(--accent2)"></div></div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">${sessions} sessão${sessions!==1?'ões':''} · média ${this.fmtMins(Math.round(totalMins/sessions))}/sessão</div>
+        </div>`;}).join('')}
+      </div>`;})()} `;
+  },
+
+  renderMonthlySummary() {
+    const dates=this.getMonthDates(),today=this.getToday();
+    const pastDates=dates.filter(d=>d<=today);
+    const completions=pastDates.map(d=>this.getDailyCompletion(d));
+    const avg=completions.length?completions.reduce((a,b)=>a+b,0)/completions.length:0;
+    const best=completions.length?Math.max(...completions):0;
+    const [y,m]=today.split('-').map(Number);
+    const monthName=new Date(y,m-1,1).toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
+    return `
+      <div class="summary-card">
+        <div class="summary-card-title">🗓️ ${monthName}</div>
+        <div class="stat-row">
+          <div class="stat-box"><div class="stat-val">${Math.round(avg)}%</div><div class="stat-lbl">Média</div></div>
+          <div class="stat-box"><div class="stat-val">${best}%</div><div class="stat-lbl">Melhor dia</div></div>
+          <div class="stat-box"><div class="stat-val">${this.getCurrentStreak()}</div><div class="stat-lbl">Sequência</div></div>
+        </div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-card-title">📅 Calendário</div>
+        <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:5px">
+          ${['D','S','T','Q','Q','S','S'].map(d=>`<div style="text-align:center;font-size:10px;color:var(--muted);font-weight:700;padding:4px 0">${d}</div>`).join('')}
+          ${this.renderMonthCalendar(dates,today)}
+        </div>
+      </div>`;
+  },
+  renderMonthCalendar(dates,today) {
+    const [y,m,d]=dates[0].split('-').map(Number);
+    const firstDow=new Date(y,m-1,d).getDay();
+    let html=Array(firstDow).fill('<div></div>').join('');
+    dates.forEach(date=>{
+      const isFuture=date>today,pct=isFuture?-1:this.getDailyCompletion(date),isToday=date===today;
+      const day=parseInt(date.split('-')[2]);
+      let bg='var(--surface2)',color='var(--muted)';
+      if (!isFuture&&pct>=80){bg='rgba(46,213,115,.25)';color='var(--green)';}
+      else if (!isFuture&&pct>=50){bg='rgba(255,107,179,.2)';color='var(--accent)';}
+      else if (!isFuture&&pct>0){bg='rgba(255,107,107,.15)';color='var(--red)';}
+      html+=`<div style="text-align:center;background:${bg};color:${color};border-radius:8px;padding:5px 2px;font-size:11px;font-weight:700;border:2px solid ${isToday?'var(--accent)':'transparent'}">${day}</div>`;
+    });
+    return html;
+  },
+
+  // ===================== MANAGE =====================
+  renderManage() {
+    const tasks=this.state.tasks;
+    return `<div class="view">
+      <div class="header">
+        <div class="header-left"><h1>Tarefas<span>.</span></h1><p>${tasks.length} tarefa${tasks.length!==1?'s':''} cadastrada${tasks.length!==1?'s':''}</p></div>
+        <button class="header-btn" onclick="App.openAddTask()" style="background:var(--accent);border-color:var(--accent);color:#fff;font-size:20px;font-weight:700;">+</button>
+      </div>
+      ${!tasks.length?`<div class="empty-state"><div class="emoji">📝</div><p>Nenhuma tarefa ainda.</p></div>`:''}
+      ${tasks.map(t=>this.renderManageItem(t)).join('')}
+    </div>`;
+  },
+  renderManageItem(task) {
+    const meta=task.type==='goal'
+      ?`🎯 ${task.dailyGoals.reduce((a,b)=>a+b,0)} ${task.goalUnit} em ${task.dailyGoals.length} dias`
+      :`${task.schedule==='fixed'?'⏰ '+task.scheduledTime:'🔄 Flexível'} · ${task.daysOfWeek&&task.daysOfWeek.length<7?task.daysOfWeek.length+'x/sem':'Diária'}`;
+    return `<div class="manage-task-item">
+      <div style="font-size:22px">${task.type==='goal'?'🎯':'✅'}</div>
+      <div class="manage-task-info"><div class="manage-task-name">${task.name}</div><div class="manage-task-meta">${meta}</div></div>
+      <div class="manage-actions">
+        <div class="manage-btn" onclick="App.openEditTask('${task.id}')">✏️</div>
+        <div class="manage-btn del" onclick="App.deleteTask('${task.id}')">🗑️</div>
+      </div>
+    </div>`;
+  },
+  deleteTask(taskId) {
+    if (!confirm('Remover esta tarefa?')) return;
+    this.state.tasks=this.state.tasks.filter(t=>t.id!==taskId); this.save(); this.render();
+  },
+
+  // ===================== SYNC =====================
+  openSync(){this.state.modal={type:'sync'};this.render();},
+  renderSyncModal() {
+    const gConnected=!!this.gdriveToken;
+    const clientIdSet=!!localStorage.getItem('foco_gdrive_client_id');
+    const lastSync=localStorage.getItem('foco_last_sync');
+    const lastSyncLabel=lastSync?new Date(parseInt(lastSync)).toLocaleString('pt-BR'):null;
+    return `<div class="overlay" onclick="if(event.target===this)App.closeModal()">
+      <div class="modal">
+        <div class="modal-handle"></div>
+        <div class="modal-title">🔄 Sincronizar dados</div>
+        <div class="modal-sub" style="margin-bottom:16px">
+          Exporte ou importe para sincronizar entre dispositivos.
+          ${lastSyncLabel?`<br><span style="color:var(--green);font-size:12px">✓ Último backup: ${lastSyncLabel}</span>`:''}
+        </div>
+
+        <div style="font-size:11px;font-weight:700;letter-spacing:.5px;color:var(--muted);text-transform:uppercase;margin-bottom:8px">☁️ Google Drive</div>
+        ${clientIdSet?`
+          <div class="sync-option" onclick="App.gdriveAuth()">
+            <div class="sync-icon-wrap" style="background:rgba(66,133,244,.1)">
+              <svg width="22" height="22" viewBox="0 0 87.3 78"><path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/><path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0-1.2 4.5h27.5z" fill="#00ac47"/><path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5h-27.5l5.85 11.5z" fill="#ea4335"/><path d="m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/><path d="m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/><path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 27h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/></svg>
+            </div>
+            <div class="sync-option-info">
+              <div class="sync-option-title">${gConnected?'✓ Drive conectado':'Entrar com Google'}</div>
+              <div class="sync-option-sub">${gConnected?'Clique para salvar/carregar':'Autorizar acesso à pasta do app'}</div>
+            </div>
+            <div style="font-size:14px;color:var(--muted)">→</div>
+          </div>
+          ${gConnected?`<div style="display:flex;gap:8px;margin-bottom:8px">
+            <button class="btn-primary" onclick="App.gdriveSave()" style="margin-top:0;flex:1;font-size:13px;padding:11px">⬆️ Salvar no Drive</button>
+            <button class="btn-secondary" onclick="App.gdriveLoad()" style="margin-top:0;flex:1;font-size:13px;padding:11px">⬇️ Carregar do Drive</button>
+          </div>`:''}`:`
+          <div class="sync-option" onclick="App.openGdriveSetup()">
+            <div class="sync-icon-wrap" style="background:rgba(66,133,244,.1)">🔑</div>
+            <div class="sync-option-info"><div class="sync-option-title">Configurar Google Drive</div><div class="sync-option-sub">Requer Client ID (gratuito)</div></div>
+            <div style="font-size:14px;color:var(--muted)">→</div>
+          </div>`}
+
+        <div style="font-size:11px;font-weight:700;letter-spacing:.5px;color:var(--muted);text-transform:uppercase;margin:16px 0 8px">📁 Arquivo local</div>
+        <div class="sync-option" onclick="App.exportFile()">
+          <div class="sync-icon-wrap" style="background:rgba(255,107,179,.1)">⬇️</div>
+          <div class="sync-option-info"><div class="sync-option-title">Exportar .foco</div><div class="sync-option-sub">Baixa arquivo com todos os dados</div></div>
+          <div style="font-size:14px;color:var(--muted)">→</div>
+        </div>
+        <div class="sync-option" onclick="document.getElementById('import-file').click()">
+          <div class="sync-icon-wrap" style="background:rgba(139,124,246,.1)">⬆️</div>
+          <div class="sync-option-info"><div class="sync-option-title">Importar .foco</div><div class="sync-option-sub">Restaura dados de outro dispositivo</div></div>
+          <div style="font-size:14px;color:var(--muted)">→</div>
+        </div>
+
+        <div style="font-size:11px;font-weight:700;letter-spacing:.5px;color:var(--muted);text-transform:uppercase;margin:16px 0 8px">📋 Copiar / Colar</div>
+        <div class="sync-option" onclick="App.copyToClipboard()">
+          <div class="sync-icon-wrap" style="background:rgba(46,213,115,.1)">📋</div>
+          <div class="sync-option-info"><div class="sync-option-title">Copiar dados</div><div class="sync-option-sub">Copia JSON para área de transferência</div></div>
+          <div style="font-size:14px;color:var(--muted)">→</div>
+        </div>
+        <div class="sync-option" onclick="App.openPasteImport()">
+          <div class="sync-icon-wrap" style="background:rgba(46,213,115,.1)">📄</div>
+          <div class="sync-option-info"><div class="sync-option-title">Colar e importar</div><div class="sync-option-sub">Cole JSON copiado de outro celular</div></div>
+          <div style="font-size:14px;color:var(--muted)">→</div>
+        </div>
+
+        <button class="btn-secondary" onclick="App.closeModal()">Fechar</button>
+      </div>
+    </div>`;
+  },
+
+  exportFile() {
+    const data=JSON.stringify(this.getExportData(),null,2);
+    const a=Object.assign(document.createElement('a'),{href:URL.createObjectURL(new Blob([data],{type:'application/json'})),download:`foco-${this.getToday()}.foco`});
+    a.click(); URL.revokeObjectURL(a.href);
+    localStorage.setItem('foco_last_sync',Date.now().toString());
+    this.showToast('✅ Arquivo exportado!','success');
+  },
+  handleImportFile(event) {
+    const file=event.target.files[0]; if (!file) return;
+    const reader=new FileReader();
+    reader.onload=e=>{try{this.importData(e.target.result);}catch(err){this.showToast('❌ Arquivo inválido','error');}};
+    reader.readAsText(file); event.target.value='';
+  },
+  copyToClipboard() {
+    const data=JSON.stringify(this.getExportData());
+    if (navigator.clipboard) navigator.clipboard.writeText(data).then(()=>this.showToast('📋 Copiado!','success')).catch(()=>this.fallbackCopy(data));
+    else this.fallbackCopy(data);
+  },
+  fallbackCopy(data) {
+    const ta=Object.assign(document.createElement('textarea'),{value:data,style:'position:fixed;opacity:0'});
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+    this.showToast('📋 Copiado!','success');
+  },
+  openPasteImport(){this.state.modal={type:'pasteImport'};this.render();},
+  renderPasteImportModal() {
+    return `<div class="overlay" onclick="if(event.target===this)App.closeModal()">
+      <div class="modal">
+        <div class="modal-handle"></div>
+        <div class="modal-title">📄 Colar e importar</div>
+        <div class="modal-sub">Cole o JSON copiado de outro dispositivo.</div>
+        <div class="form-group">
+          <label class="form-label">Dados (JSON)</label>
+          <textarea class="data-textarea" id="paste-area" placeholder='{"tasks":[...],"history":{...}}'></textarea>
+        </div>
+        <div style="background:rgba(255,107,107,.08);border:1px solid rgba(255,107,107,.2);border-radius:10px;padding:10px 12px;font-size:12px;color:var(--red);margin-bottom:12px">
+          ⚠️ Os dados novos serão <b>mesclados</b> com os atuais (nenhum dado é apagado).
+        </div>
+        <button class="btn-primary" onclick="App.confirmPasteImport()">Importar dados</button>
+        <button class="btn-secondary" onclick="App.closeModal()">Cancelar</button>
+      </div>
+    </div>`;
+  },
+  confirmPasteImport() {
+    const ta=document.getElementById('paste-area');
+    if (!ta||!ta.value.trim()){this.showToast('Cole os dados primeiro','error');return;}
+    try{this.importData(ta.value.trim());}catch(e){this.showToast('❌ Dados inválidos','error');}
+  },
+  importData(jsonStr) {
+    const parsed=JSON.parse(jsonStr);
+    if (!parsed.tasks&&!parsed.history) throw new Error('Invalid');
+    // Merge tasks (union by id)
+    const existingIds=new Set(this.state.tasks.map(t=>t.id));
+    const newTasks=[...this.state.tasks];
+    (parsed.tasks||[]).forEach(t=>{if(!existingIds.has(t.id))newTasks.push(t);});
+    // Merge history
+    const mergedHistory={...this.state.history};
+    Object.entries(parsed.history||{}).forEach(([date,entries])=>{
+      mergedHistory[date]={...(mergedHistory[date]||{}),...entries};
+    });
+    this.state.tasks=newTasks; this.state.history=mergedHistory;
+    this.save();
+    localStorage.setItem('foco_last_sync',Date.now().toString());
+    this.closeModal(); this.render();
+    this.showToast('✅ Dados importados!','success');
+  },
+  getExportData() {
+    return {tasks:this.state.tasks,history:this.state.history,exportedAt:new Date().toISOString(),version:2};
+  },
+
+  // ===================== GOOGLE DRIVE =====================
+  openGdriveSetup(){this.state.modal={type:'gdriveSetup'};this.render();},
+  renderGdriveSetupModal() {
+    const clientId=localStorage.getItem('foco_gdrive_client_id')||'';
+    return `<div class="overlay" onclick="if(event.target===this)App.closeModal()">
+      <div class="modal">
+        <div class="modal-handle"></div>
+        <div class="modal-title">🔑 Configurar Google Drive</div>
+        <div class="modal-sub">Configure uma vez, use em todos os dispositivos.</div>
+        <div style="background:var(--surface2);border-radius:12px;padding:12px 14px;margin-bottom:16px;font-size:13px;line-height:1.8;color:var(--muted)">
+          <b style="color:var(--text)">Como obter o Client ID (gratuito):</b><br>
+          1. Acesse <b style="color:var(--accent)">console.cloud.google.com</b><br>
+          2. Crie projeto → Ativar <b>Google Drive API</b><br>
+          3. Credenciais → OAuth2 → Tipo: <b>Aplicativo da Web</b><br>
+          4. Origens JS: cole a URL deste arquivo<br>
+          5. Copie o <b>Client ID</b> abaixo
+        </div>
+        <div class="form-group">
+          <label class="form-label">Google Client ID</label>
+          <input class="form-input" id="gdrive-client-id" placeholder="xxxxx.apps.googleusercontent.com" value="${clientId}">
+        </div>
+        <button class="btn-primary" onclick="App.saveGdriveClientId()">Salvar e conectar</button>
+        <button class="btn-secondary" onclick="App.openSync()">← Voltar</button>
+      </div>
+    </div>`;
+  },
+  saveGdriveClientId() {
+    const el=document.getElementById('gdrive-client-id');
+    if (!el||!el.value.trim()){this.showToast('Cole o Client ID','error');return;}
+    localStorage.setItem('foco_gdrive_client_id',el.value.trim()); location.reload();
+  },
+  gdriveAuth() {
+    const clientId=localStorage.getItem('foco_gdrive_client_id');
+    if (!clientId){this.openGdriveSetup();return;}
+    if (this.gdriveToken){this.openSync();return;}
+    const params=new URLSearchParams({client_id:clientId,redirect_uri:location.origin+location.pathname,response_type:'token',scope:GDRIVE_SCOPE,include_granted_scopes:'true'});
+    const popup=window.open(`https://accounts.google.com/o/oauth2/v2/auth?${params}`,'gauth','width=500,height=600');
+    const check=setInterval(()=>{
+      try{
+        if (!popup||popup.closed){clearInterval(check);return;}
+        const hash=popup.location.hash;
+        if (hash){
+          const p=new URLSearchParams(hash.slice(1));const token=p.get('access_token');
+          if (token){this.gdriveToken=token;popup.close();clearInterval(check);this.showToast('✅ Drive conectado!','success');this.closeModal();this.render();}
+        }
+      }catch(e){}
+    },500);
+  },
+  async gdriveSave() {
+    if (!this.gdriveToken){this.showToast('Conecte o Drive primeiro','error');return;}
+    this.showToast('⏳ Salvando...','');
+    try{
+      const data=JSON.stringify(this.getExportData(),null,2);
+      const searchRes=await fetch(`https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name='${GDRIVE_FILENAME}'&fields=files(id)`,{headers:{Authorization:`Bearer ${this.gdriveToken}`}});
+      const sj=await searchRes.json(); const existingId=sj.files?.[0]?.id;
+      const meta={name:GDRIVE_FILENAME,mimeType:'application/json',...(existingId?{}:{parents:['appDataFolder']})};
+      const form=new FormData();
+      form.append('metadata',new Blob([JSON.stringify(meta)],{type:'application/json'}));
+      form.append('file',new Blob([data],{type:'application/json'}));
+      const url=existingId?`https://www.googleapis.com/upload/drive/v3/files/${existingId}?uploadType=multipart`:`https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart`;
+      const res=await fetch(url,{method:existingId?'PATCH':'POST',headers:{Authorization:`Bearer ${this.gdriveToken}`},body:form});
+      if (res.ok){localStorage.setItem('foco_last_sync',Date.now().toString());this.showToast('✅ Salvo no Drive!','success');this.closeModal();this.render();}
+      else throw new Error(await res.text());
+    }catch(e){this.showToast('❌ Erro: '+e.message,'error');}
+  },
+  async gdriveLoad() {
+    if (!this.gdriveToken){this.showToast('Conecte o Drive primeiro','error');return;}
+    this.showToast('⏳ Carregando...','');
+    try{
+      const searchRes=await fetch(`https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name='${GDRIVE_FILENAME}'&fields=files(id)`,{headers:{Authorization:`Bearer ${this.gdriveToken}`}});
+      const sj=await searchRes.json(); const file=sj.files?.[0];
+      if (!file){this.showToast('Nenhum backup encontrado','error');return;}
+      const fileRes=await fetch(`https://www.googleapis.com/drive/v3/files/${file.id}?alt=media`,{headers:{Authorization:`Bearer ${this.gdriveToken}`}});
+      this.importData(await fileRes.text());
+      localStorage.setItem('foco_last_sync',Date.now().toString());
+    }catch(e){this.showToast('❌ Erro: '+e.message,'error');}
+  },
+
+  // ===================== MODALS =====================
+  renderModal() {
+    const m=this.state.modal; if (!m) return '';
+    return {addTask:()=>this.renderAddTaskModal(),logProgress:()=>this.renderLogProgressModal(),logWords:()=>this.renderLogWordsModal(),defineConversion:()=>this.renderDefineConversionModal(),suggestion:()=>this.renderSuggestionModal(),missedTask:()=>this.renderMissedTaskModal(),insights:()=>this.renderInsightsModal(),sync:()=>this.renderSyncModal(),pasteImport:()=>this.renderPasteImportModal(),gdriveSetup:()=>this.renderGdriveSetupModal(),finishTime:()=>this.renderFinishTimeModal(),taskDetail:()=>this.renderTaskDetailModal(),medalDetail:()=>this.renderMedalDetailModal()}[m.type]?.()??'';
+  },
+  closeModal(){this.state.modal=null;this.state.wizard=null;this.render();},
+
+  // ===================== FINISH TIME MODAL =====================
+  renderFinishTimeModal() {
+    const m=this.state.modal, task=this.state.tasks.find(t=>t.id===m.taskId);
+    return `<div class="overlay center">
+      <div class="modal card-modal">
+        <div style="text-align:center;padding:8px 0 16px">
+          <div style="font-size:44px;margin-bottom:8px">🎉</div>
+          <div style="font-size:20px;font-weight:800;margin-bottom:4px">Concluído!</div>
+          <div style="font-size:13px;color:var(--muted)">${task?task.name:''}</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">⏰ Que horas você terminou?</label>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:6px">(opcional — ajuda a descobrir seu melhor horário)</div>
+          <input class="form-input" id="finish-time-input" type="time" value="${this.getNow()}"
+            style="font-size:20px;font-weight:700;text-align:center;padding:14px">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">⏱️ Quanto tempo você levou?</label>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:8px">(opcional — ajuda a ver quanto tempo cada matéria exige)</div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input class="form-input" id="finish-hours-input" type="number" min="0" max="23" placeholder="0" style="text-align:center;font-size:18px;font-weight:700;padding:12px">
+            <span style="color:var(--muted);font-size:13px;font-weight:600;flex-shrink:0">h</span>
+            <input class="form-input" id="finish-mins-input" type="number" min="0" max="59" placeholder="0" style="text-align:center;font-size:18px;font-weight:700;padding:12px">
+            <span style="color:var(--muted);font-size:13px;font-weight:600;flex-shrink:0">min</span>
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
+            ${[15,30,45,60,90].map(v=>`<button class="toggle-btn" onclick="App.setTimeSpentQuick(${v})" style="font-size:12px;padding:6px 10px">${v<60?v+'min':(v/60)+'h'}</button>`).join('')}
+          </div>
+        </div>
+
+        <button class="btn-primary" onclick="App.confirmFinishTime()">✓ Registrar</button>
+        <button class="btn-secondary" onclick="App.saveFinishTime('${m.taskId}','${m.date}','','')">Pular</button>
+      </div>
+    </div>`;
+  },
+  setTimeSpentQuick(totalMins) {
+    const h = Math.floor(totalMins/60), m = totalMins%60;
+    const hEl = document.getElementById('finish-hours-input');
+    const mEl = document.getElementById('finish-mins-input');
+    if (hEl) hEl.value = h;
+    if (mEl) mEl.value = m;
+  },
+  confirmFinishTime() {
+    const m=this.state.modal;
+    const timeEl=document.getElementById('finish-time-input');
+    const hEl=document.getElementById('finish-hours-input');
+    const mEl=document.getElementById('finish-mins-input');
+    const time=timeEl?timeEl.value:this.getNow();
+    const h=parseInt(hEl?.value)||0, mins=parseInt(mEl?.value)||0;
+    const timeSpent=(h>0||mins>0)?(h*60+mins):0;
+    this.saveFinishTime(m.taskId,m.date,time,timeSpent||null);
+  },
+
+  // ===================== ADD/EDIT WIZARD =====================
+  openAddTask() {
+    this.state.wizard={step:1,name:'',type:'simple',goalUnit:'páginas',totalGoal:'',totalPages:0,startOffset:0,daysToComplete:'',distribution:'equal',dailyGoals:[],schedule:'flexible',scheduledTime:'08:00',daysOfWeek:[0,1,2,3,4,5,6],dailyMinutes:'',wordsEnabled:false,wordsTotal:'',wordsOffset:0,wordsDays:'',wordsDistribution:'equal',wordsDailyGoals:[]};
+    this.state.modal={type:'addTask'}; this.render();
+  },
+  openEditTask(taskId) {
+    const task=this.state.tasks.find(t=>t.id===taskId); if (!task) return;
+    this.state.wizard={editId:taskId,step:1,name:task.name,type:task.type,goalUnit:task.goalUnit||'páginas',totalGoal:task.type==='goal'?(task.totalBook||task.dailyGoals.reduce((a,b)=>a+b,0)):'',totalPages:task.totalPages||0,startOffset:task.startOffset||0,daysToComplete:task.type==='goal'?task.dailyGoals.length:'',distribution:'equal',dailyGoals:task.dailyGoals||[],schedule:task.schedule||'flexible',scheduledTime:task.scheduledTime||'08:00',daysOfWeek:task.daysOfWeek||[0,1,2,3,4,5,6],chapterPages:task.chapterPages||[],numChapters:(task.chapterPages&&task.chapterPages.length)||'',dailyMinutes:task.dailyMinutes||'',wordsEnabled:!!(task.wordsDailyGoals&&task.wordsDailyGoals.length),wordsTotal:task.wordsTotal||'',wordsOffset:task.wordsOffset||0,wordsDays:task.wordsDailyGoals?task.wordsDailyGoals.length:'',wordsDistribution:'equal',wordsDailyGoals:task.wordsDailyGoals||[]};
+    this.state.modal={type:'addTask'}; this.render();
+  },
+  renderAddTaskModal() {
+    const w=this.state.wizard, totalSteps=w.type==='goal'?3:(w.type==='simple'&&w.wordsEnabled&&w.wordsDistribution==='custom'&&parseInt(w.wordsDays)>0?3:2), isEdit=!!w.editId;
+    const steps=`<div class="wizard-steps">${Array.from({length:totalSteps},(_,i)=>`<div class="wizard-step ${i<w.step?'done':''}"></div>`).join('')}</div>`;
+    let content='';
+    if (w.step===1) {
+      const dows=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+      content=`<div class="modal-title">${isEdit?'Editar tarefa':'Nova tarefa'}</div>
+        <div class="modal-sub">Passo 1: tipo e nome</div>
+        <div class="form-group"><label class="form-label">Tipo</label>
+          <div class="toggle-group">
+            <button class="toggle-btn ${w.type==='simple'?'active':''}" onclick="App.setWizard('type','simple')">✅ Simples</button>
+            <button class="toggle-btn ${w.type==='goal'?'active':''}" onclick="App.setWizard('type','goal')">🎯 Meta</button>
+          </div>
+        </div>
+        <div class="form-group"><label class="form-label">Nome</label>
+          <input class="form-input" id="wiz-name" placeholder="Ex: Meditar, Ler livro..." value="${w.name}" oninput="App.state.wizard.name=this.value">
+        </div>
+        <div class="form-group"><label class="form-label">Dias da semana</label>
+          <div class="toggle-group">${dows.map((l,i)=>`<button class="toggle-btn ${w.daysOfWeek.includes(i)?'active':''}" onclick="App.toggleDow(${i})" style="font-size:12px;padding:7px 4px">${l}</button>`).join('')}</div>
+        </div>
+        ${w.type==='simple'?`
+        <div class="form-group"><label class="form-label">⏱ Meta de tempo diário <span style="color:var(--muted);font-size:11px;font-weight:400;text-transform:none">(opcional)</span></label>
+          <div style="display:flex;align-items:center;gap:8px">
+            <input class="form-input" type="number" min="1" placeholder="Ex: 20" value="${w.dailyMinutes||''}" oninput="App.state.wizard.dailyMinutes=this.value" style="max-width:120px">
+            <span style="color:var(--muted);font-size:13px;font-weight:600">min/dia</span>
+          </div>
+        </div>
+        <div class="form-group"><label class="form-label">📝 Meta de palavras <span style="color:var(--muted);font-size:11px;font-weight:400;text-transform:none">(opcional)</span></label>
+          <div class="toggle-group" style="margin-bottom:${w.wordsEnabled?'12px':'0'}">
+            <button class="toggle-btn ${!w.wordsEnabled?'active':''}" onclick="App.setWizard('wordsEnabled',false)">Não usar</button>
+            <button class="toggle-btn ${w.wordsEnabled?'active':''}" onclick="App.setWizard('wordsEnabled',true)">Ativar</button>
+          </div>
+          ${w.wordsEnabled?`
+            <div style="background:var(--surface2);border-radius:12px;padding:12px 14px">
+              <div class="form-group" style="margin-bottom:10px">
+                <label class="form-label" style="font-size:11px">Total de palavras</label>
+                <input class="form-input" type="number" min="1" placeholder="Ex: 100" value="${w.wordsTotal||''}" oninput="App.state.wizard.wordsTotal=this.value">
+              </div>
+              <div class="form-group" style="margin-bottom:10px">
+                <label class="form-label" style="font-size:11px">Já estudei <span style="font-weight:400;color:var(--muted)">(opcional)</span></label>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <input class="form-input" type="number" min="0" placeholder="Ex: 20" value="${w.wordsOffset||''}" oninput="App.state.wizard.wordsOffset=parseInt(this.value)||0" style="max-width:120px">
+                  <span style="color:var(--muted);font-size:12px">palavras</span>
+                </div>
+              </div>
+              <div class="form-group" style="margin-bottom:10px">
+                <label class="form-label" style="font-size:11px">Dias para concluir</label>
+                <input class="form-input" type="number" min="1" placeholder="Ex: 10" value="${w.wordsDays||''}" oninput="App.state.wizard.wordsDays=this.value">
+              </div>
+              <div class="form-group" style="margin-bottom:0">
+                <label class="form-label" style="font-size:11px">Distribuição</label>
+                <div class="toggle-group">
+                  <button class="toggle-btn ${w.wordsDistribution==='equal'?'active':''}" onclick="App.setWizard('wordsDistribution','equal')">Igual por dia</button>
+                  <button class="toggle-btn ${w.wordsDistribution==='custom'?'active':''}" onclick="App.setWizard('wordsDistribution','custom')">Personalizada</button>
+                </div>
+              </div>
+            </div>
+          `:''}
+        </div>`:''}
+        <button class="btn-primary" onclick="App.wizardNext()">Continuar →</button>
+        <button class="btn-secondary" onclick="App.closeModal()">Cancelar</button>`;
+    } else if (w.step===2&&w.type==='goal') {
+      const hasOffset=(w.startOffset||0)>0;
+      const total=parseInt(w.totalGoal)||0;
+      const offset=parseInt(w.startOffset)||0;
+      const remaining=total>0&&offset>0?total-offset:total;
+      content=`<div class="modal-title">Configurar meta</div>
+        <div class="modal-sub">Passo 2: quantidade e prazo</div>
+        <div class="form-group"><label class="form-label">Unidade</label>
+          <div class="toggle-group">${['páginas','min'].map(u=>`<button class="toggle-btn ${w.goalUnit===u?'active':''}" onclick="App.setWizard('goalUnit','${u}')" style="font-size:12px">${u}</button>`).join('')}</div>
+        </div>
+        <div class="form-group"><label class="form-label">Total do livro/tarefa (${w.goalUnit})</label>
+          <input class="form-input" id="wiz-total" type="number" min="1" placeholder="Ex: 263" value="${w.totalGoal}" oninput="App.state.wizard.totalGoal=this.value;App.refreshWizardOffsetDOM();App.refreshWizardPagesDOM();App.refreshChapterPagesDOM()">
+        </div>
+        ${w.goalUnit!=='min'?`<div class="form-group">
+          <label class="form-label">📚 Número de capítulos <span style="color:var(--muted);font-weight:400;text-transform:none;font-size:11px">(opcional — para acompanhar por capítulo)</span></label>
+          <input class="form-input" type="number" min="1" placeholder="Ex: 12" value="${w.numChapters||''}" oninput="App.state.wizard.numChapters=parseInt(this.value)||'';App.refreshChapterPagesDOM()">
+        </div>`:''}
+        <div id="wiz-chapter-pages-wrap" ${w.goalUnit==='min'?'style="display:none"':''}>${(()=>{
+          const numChapters=parseInt(w.numChapters)||0;
+          if(numChapters<1)return'';
+          if(!w.chapterPages||w.chapterPages.length!==numChapters){
+            const prev=w.chapterPages||[];
+            w.chapterPages=Array.from({length:numChapters},(_,i)=>prev[i]||'');
+          }
+          let rows='';
+          for(let i=0;i<numChapters;i++){
+            rows+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'
+              +'<div style="font-size:12px;font-weight:600;color:var(--muted);min-width:90px;flex-shrink:0">Cap. '+(i+1)+'</div>'
+              +'<input class="form-input" type="number" min="1" placeholder="pág. inicial"'
+              +' style="padding:8px 10px;font-size:14px"'
+              +' value="'+(w.chapterPages[i]||'')+'"'
+              +' oninput="App.setWizardChapterPage('+i+',this.value)">'
+              +'</div>';
+          }
+          return '<div class="form-group">'
+            +'<label class="form-label">📄 Página inicial de cada capítulo</label>'
+            +'<div style="background:var(--surface2);border-radius:12px;padding:12px 14px;max-height:220px;overflow-y:auto">'
+            +rows+'</div></div>';
+        })()}</div>
+        <div class="form-group">
+          <label class="form-label">📍 Você já começou?</label>
+          <div class="toggle-group" style="margin-bottom:10px">
+            <button class="toggle-btn ${!hasOffset?'active':''}" onclick="App.setWizard('startOffset',0)">🆕 Começando do zero</button>
+            <button class="toggle-btn ${hasOffset?'active':''}" onclick="App.setWizard('startOffset',App.state.wizard.startOffset>0?App.state.wizard.startOffset:1)">📖 Já estou no meio</button>
+          </div>
+          ${hasOffset?`
+          <div style="background:var(--surface2);border-radius:12px;padding:12px 14px;margin-bottom:10px">
+            <label class="form-label" style="margin-bottom:6px">Parei em qual ${w.goalUnit}?</label>
+            <input class="form-input" id="wiz-offset" type="number" min="1" max="${total-1||9999}" placeholder="Ex: 105"
+              value="${w.startOffset||''}" oninput="App.state.wizard.startOffset=parseInt(this.value)||0;App.refreshWizardOffsetDOM()">
+            <div id="wiz-offset-preview" style="margin-top:8px;font-size:12px;color:var(--muted)${total>0&&offset>0?'':'display:none'}"">
+              Livro: <b style="color:var(--text)">${total} ${w.goalUnit}</b> &nbsp;·&nbsp;
+              Já lido: <b style="color:var(--accent2)" id="wiz-offset-lido">${offset} ${w.goalUnit}</b> &nbsp;·&nbsp;
+              Restante: <b style="color:var(--accent)" id="wiz-offset-rest">${remaining} ${w.goalUnit}</b>
+            </div>
+          </div>`:''}
+        </div>
+
+        <div class="form-group"><label class="form-label">Prazo (dias para concluir o restante)</label>
+          <input class="form-input" id="wiz-days" type="number" min="1" placeholder="Ex: 5" value="${w.daysToComplete}" oninput="App.state.wizard.daysToComplete=this.value">
+        </div>
+        <div class="form-group"><label class="form-label">Distribuição</label>
+          <div class="toggle-group">
+            <button class="toggle-btn ${w.distribution==='equal'?'active':''}" onclick="App.setWizard('distribution','equal')">Igual por dia</button>
+            <button class="toggle-btn ${w.distribution==='custom'?'active':''}" onclick="App.setWizard('distribution','custom')">Personalizada</button>
+          </div>
+        </div>
+        <button class="btn-primary" onclick="App.wizardNext()">Continuar →</button>
+        <button class="btn-secondary" onclick="App.setWizardStep(1)">← Voltar</button>`;
+    } else if (w.step===3&&w.type==='goal'&&w.distribution==='custom') {
+      const totalBook=parseInt(w.totalGoal)||0;
+      const offset=parseInt(w.startOffset)||0;
+      const total=totalBook-offset; // what remains to be distributed
+      const days=parseInt(w.daysToComplete)||1;
+      if (w.dailyGoals.length!==days){const eq=Math.floor(total/days),rem=total-eq*(days-1);w.dailyGoals=Array.from({length:days},(_,i)=>i===days-1?rem:eq);}
+      const currentSum=w.dailyGoals.reduce((a,b)=>a+b,0), diff=currentSum-total;
+      const today=this.getToday(), dayNames=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+      content=`<div class="modal-title">Distribuição personalizada</div>
+        <div class="modal-sub">Passo 3: ajuste por dia${offset>0?` · distribuindo ${total} ${w.goalUnit} restantes`:''}</div>
+        <div class="dist-total ${Math.abs(diff)<=1?'ok':'over'}" id="dist-total-el">
+          ${Math.abs(diff)<=1?'✓ Total correto: '+currentSum+' '+w.goalUnit:(diff>0?'▲ Excedendo: ':'▼ Faltando: ')+Math.abs(diff)+' '+w.goalUnit}
+        </div>
+        ${w.dailyGoals.map((g,i)=>{const date=this.addDays(today,i);const [yr,mo,da]=date.split('-').map(Number);const lbl=i===0?'Hoje':dayNames[new Date(yr,mo-1,da).getDay()];
+          const absStart=offset+w.dailyGoals.slice(0,i).reduce((a,b)=>a+b,0)+1;
+          const absEnd=offset+w.dailyGoals.slice(0,i+1).reduce((a,b)=>a+b,0);
+          return `<div class="dist-day-row"><div class="dist-day-label">${lbl}</div>
+            <input class="dist-day-input" type="number" min="0" value="${g}" onchange="App.setDayGoal(${i},parseInt(this.value)||0)">
+            <span style="font-size:11px;color:var(--muted);min-width:60px">${absStart}–${absEnd}</span></div>`;}).join('')}
+        <button class="btn-primary" onclick="App.wizardNext()">Continuar →</button>
+        <button class="btn-secondary" onclick="App.setWizardStep(2)">← Voltar</button>`;
+    } else if (w.step===2&&w.type==='simple'&&w.wordsEnabled&&w.wordsDistribution==='custom') {
+      const totalW=parseInt(w.wordsTotal)||0,offsetW=parseInt(w.wordsOffset)||0;
+      const remainingW=totalW-offsetW,days=parseInt(w.wordsDays)||1;
+      if(w.wordsDailyGoals.length!==days){const eq=Math.floor(remainingW/days),rem=remainingW-eq*(days-1);w.wordsDailyGoals=Array.from({length:days},(_,i)=>i===days-1?rem:eq);}
+      const currentSum=w.wordsDailyGoals.reduce((a,b)=>a+b,0),diff=currentSum-remainingW;
+      const today=this.getToday(),dayNames=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+      content=`<div class="modal-title">Distribuição de palavras</div>
+        <div class="modal-sub">Ajuste as palavras por dia</div>
+        <div class="dist-total ${Math.abs(diff)<=1?'ok':'over'}" id="dist-total-el">
+          ${Math.abs(diff)<=1?'✓ Total correto: '+currentSum+' palavras':(diff>0?'▲ Excedendo: ':'▼ Faltando: ')+Math.abs(diff)+' palavras'}
+        </div>
+        ${w.wordsDailyGoals.map((g,i)=>{const date=this.addDays(today,i);const[yr,mo,da]=date.split('-').map(Number);const lbl=i===0?'Hoje':dayNames[new Date(yr,mo-1,da).getDay()];
+          return `<div class="dist-day-row"><div class="dist-day-label">${lbl}</div>
+            <input class="dist-day-input" type="number" min="0" value="${g}" onchange="App.setWordsDay(${i},parseInt(this.value)||0)">
+            <span style="font-size:11px;color:var(--muted);min-width:60px">palavras</span></div>`;}).join('')}
+        <button class="btn-primary" onclick="App.wizardNext()">Continuar →</button>
+        <button class="btn-secondary" onclick="App.setWizardStep(1)">← Voltar</button>`;
+    } else {
+      content=`<div class="modal-title">Horário</div>
+        <div class="modal-sub">Último passo: quando fazer?</div>
+        <div class="form-group"><label class="form-label">Tipo de horário</label>
+          <div class="toggle-group">
+            <button class="toggle-btn ${w.schedule==='flexible'?'active':''}" onclick="App.setWizard('schedule','flexible')">🔄 Flexível</button>
+            <button class="toggle-btn ${w.schedule==='fixed'?'active':''}" onclick="App.setWizard('schedule','fixed')">⏰ Fixo</button>
+          </div>
+        </div>
+        ${w.schedule==='fixed'?`<div class="form-group"><label class="form-label">Horário</label>
+          <input class="form-input" type="time" value="${w.scheduledTime}" onchange="App.state.wizard.scheduledTime=this.value">
+        </div>`:`<div style="background:var(--surface2);border-radius:12px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:var(--muted)">🔄 Flexível: pode ser feita a qualquer hora do dia.</div>`}
+        <button class="btn-primary" onclick="App.wizardSave()">${isEdit?'💾 Salvar':'✨ Criar tarefa'}</button>
+        <button class="btn-secondary" onclick="App.setWizardStep(w.type==='goal'&&w.distribution==='custom'?3:w.type==='goal'?2:1)">← Voltar</button>`;
+    }
+    return `<div class="overlay" onclick="if(event.target===this)App.closeModal()">
+      <div class="modal"><div class="modal-handle"></div>${steps}${content}</div>
+    </div>`;
+  },
+  setWizardChapterPage(i,val){
+    if(!this.state.wizard.chapterPages)this.state.wizard.chapterPages=[];
+    this.state.wizard.chapterPages[i]=parseInt(val)||'';
+    // Recalcula totalPages como página inicial do último cap + estimativa
+    const cp=this.state.wizard.chapterPages;
+    const filled=cp.filter(v=>v>0);
+    if(filled.length>0)this.state.wizard.totalPages=Math.max(...filled);
+  },
+  setWizard(k,v){
+    this.state.wizard[k]=v;
+    // Guarda qual campo estava focado antes do re-render
+    const focusedId=document.activeElement?document.activeElement.id:null;
+    this.render();
+    // Restaura o foco após re-render (evita perda de foco ao clicar em toggle)
+    if(focusedId){const el=document.getElementById(focusedId);if(el){el.focus();if(el.setSelectionRange&&el.type!=='number'&&el.type!=='time')try{el.setSelectionRange(el.value.length,el.value.length);}catch(e){}}}
+  },
+  // Atualiza apenas os elementos de preview no DOM, sem re-renderizar o modal inteiro
+  refreshWizardOffsetDOM(){
+    const w=this.state.wizard; if(!w)return;
+    const total=parseInt(w.totalGoal)||0;
+    const offset=parseInt(w.startOffset)||0;
+    const remaining=total>0&&offset>0?total-offset:total;
+    const lidoEl=document.getElementById('wiz-offset-lido');
+    const restEl=document.getElementById('wiz-offset-rest');
+    const prevEl=document.getElementById('wiz-offset-preview');
+    if(lidoEl)lidoEl.textContent=offset+' '+w.goalUnit;
+    if(restEl)restEl.textContent=remaining+' '+w.goalUnit;
+    if(prevEl)prevEl.style.display=(total>0&&offset>0)?'':'none';
+  },
+  toggleBarMode(taskId){
+    if(!this.state.barModes)this.state.barModes={};
+    this.state.barModes[taskId]=this.state.barModes[taskId]==='chapters'?'pages':'chapters';
+    this.render();
+  },
+  refreshWizardOffset(){this.render();},
+  // Atualiza apenas a seção de páginas por unidade sem re-renderizar o modal
+  refreshChapterPagesDOM(){
+    const el=document.getElementById('wiz-chapter-pages-wrap'); if(!el)return;
+    const w=this.state.wizard; if(!w)return;
+    const numChapters=parseInt(w.numChapters)||0;
+    if(numChapters<1){el.innerHTML='';return;}
+    if(!w.chapterPages||w.chapterPages.length!==numChapters){const prev=w.chapterPages||[];w.chapterPages=Array.from({length:numChapters},(_,i)=>prev[i]||'');}
+    let rows='';
+    for(let i=0;i<numChapters;i++){
+      rows+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'
+        +'<div style="font-size:12px;font-weight:600;color:var(--muted);min-width:90px;flex-shrink:0">Cap. '+(i+1)+'</div>'
+        +'<input class="form-input" type="number" min="1" placeholder="pág. inicial"'
+        +' style="padding:8px 10px;font-size:14px"'
+        +' value="'+(w.chapterPages[i]||'')+'"'
+        +' oninput="App.setWizardChapterPage('+i+',this.value)">'
+        +'</div>';
+    }
+    el.innerHTML='<div class="form-group">'
+      +'<label class="form-label">📄 Página inicial de cada capítulo</label>'
+      +'<div style="background:var(--surface2);border-radius:12px;padding:12px 14px;max-height:220px;overflow-y:auto">'
+      +rows+'</div></div>';
+  },
+  // Atualiza o preview de páginas por unidade em tempo real
+  refreshWizardPagesDOM(){
+    const w=this.state.wizard; if(!w)return;
+    const total=parseInt(w.totalGoal)||0;
+    const pages=parseInt(w.totalPages)||0;
+    const rateEl=document.getElementById('wiz-pages-rate');
+    const prevEl=document.getElementById('wiz-pages-preview');
+    if(rateEl&&total>0&&pages>0){
+      rateEl.textContent=Math.round((pages/total)*10)/10;
+    }
+    if(prevEl)prevEl.style.display=(total>0&&pages>0)?'':'none';
+  },
+  toggleDow(i){
+    const focusedId=document.activeElement?document.activeElement.id:null;
+    const d=[...this.state.wizard.daysOfWeek],idx=d.indexOf(i);idx>=0?d.splice(idx,1):d.push(i);this.state.wizard.daysOfWeek=d.sort();this.render();
+    if(focusedId){const el=document.getElementById(focusedId);if(el)el.focus();}
+  },
+  setDayGoal(i,val){
+    this.state.wizard.dailyGoals[i]=val;
+    const offset=parseInt(this.state.wizard.startOffset)||0;
+    const totalBook=parseInt(this.state.wizard.totalGoal)||0;
+    const total=totalBook-offset;
+    const sum=this.state.wizard.dailyGoals.reduce((a,b)=>a+b,0),diff=sum-total;
+    const el=document.getElementById('dist-total-el');
+    if(el){el.className=`dist-total ${Math.abs(diff)<=1?'ok':'over'}`;el.textContent=Math.abs(diff)<=1?'✓ Total correto: '+sum+' '+this.state.wizard.goalUnit:(diff>0?'▲ Excedendo: ':'▼ Faltando: ')+Math.abs(diff)+' '+this.state.wizard.goalUnit;}
+  },
+  setWizardStep(s){this.state.wizard.step=s;this.render();},
+  wizardNext(){
+    const w=this.state.wizard;
+    if(w.step===1){if(!w.name.trim()){this.showToast('Digite o nome','error');return;}if(!w.daysOfWeek.length){this.showToast('Selecione ao menos um dia','error');return;}w.step=w.type==='goal'?2:(w.wordsEnabled&&w.wordsDistribution==='custom'&&parseInt(w.wordsDays)>0&&parseInt(w.wordsTotal)>0?2:99);}
+    else if(w.step===2&&w.type==='simple'){
+      const remainingW=(parseInt(w.wordsTotal)||0)-(parseInt(w.wordsOffset)||0);
+      const sum=w.wordsDailyGoals.reduce((a,b)=>a+b,0);
+      if(Math.abs(sum-remainingW)>1){this.showToast(`Soma ${sum} ≠ restante ${remainingW}`,'error');return;}
+      w.step=99;
+    }
+    else if(w.step===2){
+      if(!w.totalGoal||parseInt(w.totalGoal)<=0){this.showToast('Digite a quantidade total','error');return;}
+      const offset=parseInt(w.startOffset)||0;
+      if(offset>0&&offset>=parseInt(w.totalGoal)){this.showToast('A posição inicial deve ser menor que o total','error');return;}
+      if(!w.daysToComplete||parseInt(w.daysToComplete)<=0){this.showToast('Digite o prazo em dias','error');return;}
+      w.step=w.distribution==='custom'?3:99;
+    }
+    else if(w.step===3){
+      const offset=parseInt(w.startOffset)||0;
+      const total=parseInt(w.totalGoal)-offset;
+      const sum=w.dailyGoals.reduce((a,b)=>a+b,0);
+      if(Math.abs(sum-total)>1){this.showToast(`Soma ${sum} ≠ restante ${total}`,'error');return;}
+      w.step=99;
+    }
+    this.render();
+  },
+  wizardSave(){
+    const w=this.state.wizard,today=this.getToday();
+    let dailyGoals=[];
+    const offset=parseInt(w.startOffset)||0;
+    if(w.type==='goal'){
+      const totalBook=parseInt(w.totalGoal);
+      const remaining=totalBook-offset; // pages left to read
+      const days=parseInt(w.daysToComplete);
+      if(w.distribution==='custom'&&w.dailyGoals.length===days){
+        dailyGoals=w.dailyGoals.map(Number);
+      } else {
+        const eq=Math.floor(remaining/days),rem=remaining-eq*(days-1);
+        dailyGoals=Array.from({length:days},(_,i)=>i===days-1?rem:eq);
+      }
+    }
+    if(w.editId){
+      const task=this.state.tasks.find(t=>t.id===w.editId);
+      if(task){
+        Object.assign(task,{name:w.name.trim(),type:w.type,schedule:w.schedule,scheduledTime:w.schedule==='fixed'?w.scheduledTime:null,daysOfWeek:w.daysOfWeek});
+        if(w.type==='goal'){          Object.assign(task,{goalUnit:w.goalUnit,dailyGoals,startDate:task.startDate||today,totalBook:parseInt(w.totalGoal),startOffset:offset});
+          // Salva chapterPages e monta unitConversions para conversão por página
+          if(w.chapterPages&&w.chapterPages.length>0&&parseInt(w.numChapters)>0){
+            const cp=w.chapterPages.map(v=>parseInt(v)||0);
+            task.chapterPages=cp;
+            const filled=cp.filter(v=>v>0);
+            if(filled.length>1){
+              const avgPages=Math.round(((Math.max(...filled)-Math.min(...filled))/(filled.length-1))*10)/10;
+              if(!task.unitConversions)task.unitConversions={};
+              task.unitConversions['páginas']=avgPages>0?avgPages:1;
+            }
+          }
+        } else if(w.type==='simple'){
+          task.dailyMinutes=parseInt(w.dailyMinutes)||0;
+          if(w.wordsEnabled&&parseInt(w.wordsTotal)>0&&parseInt(w.wordsDays)>0){
+            const totalW=parseInt(w.wordsTotal),offsetW=parseInt(w.wordsOffset)||0;
+            const remainingW=totalW-offsetW,days=parseInt(w.wordsDays);
+            let wdg;
+            if(w.wordsDistribution==='custom'&&w.wordsDailyGoals.length===days){wdg=w.wordsDailyGoals.map(Number);}
+            else{const eq=Math.floor(remainingW/days),rem=remainingW-eq*(days-1);wdg=Array.from({length:days},(_,i)=>i===days-1?rem:eq);}
+            task.wordsTotal=totalW;task.wordsOffset=offsetW;task.wordsDailyGoals=wdg;task.startDate=task.startDate||today;
+          } else {task.wordsTotal=0;task.wordsDailyGoals=[];}
+        }
+      }
+    } else {
+      const task={id:this.uid(),name:w.name.trim(),type:w.type,active:true,schedule:w.schedule,scheduledTime:w.schedule==='fixed'?w.scheduledTime:null,daysOfWeek:w.daysOfWeek};
+      if(w.type==='goal'){
+        Object.assign(task,{goalUnit:w.goalUnit,dailyGoals,startDate:today,totalBook:parseInt(w.totalGoal),startOffset:offset});
+        // Salva chapterPages e monta unitConversions para conversão por página
+        if(w.chapterPages&&w.chapterPages.length>0&&parseInt(w.numChapters)>0){
+          const cp=w.chapterPages.map(v=>parseInt(v)||0);
+          task.chapterPages=cp; // página inicial de cada unidade (cap, versículo etc)
+          // Monta mapa página→unidade para uso no registro
+          // unitConversions['páginas'] = pages-per-unit média (fallback)
+          const filled=cp.filter(v=>v>0);
+          if(filled.length>1){
+            const avgPages=Math.round(((Math.max(...filled)-Math.min(...filled))/(filled.length-1))*10)/10;
+            task.unitConversions=task.unitConversions||{};
+            task.unitConversions['páginas']=avgPages>0?avgPages:1;
+          }
+        }
+        // Pre-register the offset as already-done progress so absolute position math is correct
+        if(offset>0){
+          this.state.tasks.push(task);
+          // We'll set it after push so task.id is available
+          this.setTaskDayData(task.id,today,{progress:0,completed:false,_offsetRegistered:true});
+        }
+      } else if(w.type==='simple'){
+        task.dailyMinutes=parseInt(w.dailyMinutes)||0;
+        if(w.wordsEnabled&&parseInt(w.wordsTotal)>0&&parseInt(w.wordsDays)>0){
+          const totalW=parseInt(w.wordsTotal),offsetW=parseInt(w.wordsOffset)||0;
+          const remainingW=totalW-offsetW,days=parseInt(w.wordsDays);
+          let wdg;
+          if(w.wordsDistribution==='custom'&&w.wordsDailyGoals.length===days){wdg=w.wordsDailyGoals.map(Number);}
+          else{const eq=Math.floor(remainingW/days),rem=remainingW-eq*(days-1);wdg=Array.from({length:days},(_,i)=>i===days-1?rem:eq);}
+          task.wordsTotal=totalW;task.wordsOffset=offsetW;task.wordsDailyGoals=wdg;task.startDate=today;
+        }
+      }
+      if(!this.state.tasks.includes(task))this.state.tasks.push(task);
+    }
+    this.save();this.closeModal();this.state.view='today';this.render();
+  },
+
+  // ===================== LOG PROGRESS =====================
+  openLogWords(taskId){
+    const task=this.state.tasks.find(t=>t.id===taskId); if(!task)return;
+    const today=this.getToday(),data=this.getTaskDayData(task.id,today);
+    this.state.modal={type:'logWords',taskId,logAmount:data.wordsProgress||0};
+    this.render();
+  },
+  renderLogWordsModal(){
+    const m=this.state.modal,task=this.state.tasks.find(t=>t.id===m.taskId); if(!task)return'';
+    const today=this.getToday(),goal=this.getWordsGoalForDay(task,today);
+    const data=this.getTaskDayData(task.id,today),current=data.wordsProgress||0;
+    const totalDone=this.calcWordsCumulative(task,today);
+    return `<div class="overlay center" onclick="if(event.target===this)App.closeModal()">
+      <div class="modal card-modal">
+        <div class="modal-handle"></div>
+        <div class="modal-title">📝 Registrar palavras</div>
+        <div class="modal-sub">${task.name}</div>
+        <div style="background:var(--surface2);border-radius:12px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:var(--muted)">
+          Meta hoje: <b style="color:var(--text)">${goal} palavras</b> · Feitas hoje: <b style="color:var(--accent)">${current}</b> · Total: <b style="color:var(--accent2)">${totalDone}/${task.wordsTotal}</b>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Palavras estudadas hoje</label>
+          <input class="form-input" id="log-words-input" type="number" min="0" value="${current}" style="font-size:24px;font-weight:700;text-align:center">
+        </div>
+        <button class="btn-primary" onclick="App.confirmLogWords()">✓ Salvar</button>
+        <button class="btn-secondary" onclick="App.closeModal()">Cancelar</button>
+      </div>
+    </div>`;
+  },
+  confirmLogWords(){
+    const m=this.state.modal,task=this.state.tasks.find(t=>t.id===m.taskId); if(!task)return;
+    const el=document.getElementById('log-words-input');
+    const val=parseInt(el?el.value:0)||0;
+    const today=this.getToday();
+    this.setTaskDayData(task.id,today,{wordsProgress:val});
+    this.save();this.closeModal();this.render();
+    const goal=this.getWordsGoalForDay(task,today);
+    this.showToast(`📝 ${val}/${goal} palavras`,'success');
+  },
+  openLogProgress(taskId){    const task=this.state.tasks.find(t=>t.id===taskId); if(!task)return;
+    const today=this.getToday(),data=this.getTaskDayData(task.id,today);
+    const startOffset=task.startOffset||0;
+    const todayIdx=this.daysDiff(task.startDate,today);
+    // Cumulative done in previous task days (not counting startOffset)
+    let cumDaysBefore=0;
+    for(let i=0;i<todayIdx;i++){
+      const d=this.addDays(task.startDate,i);
+      const dd=this.getTaskDayData(task.id,d);
+      cumDaysBefore+=(dd.progress||0);
+    }
+    const todayProgress=data.progress||0;
+    // absolutePosition = startOffset + days done + today's progress
+    const currentPosition=startOffset+cumDaysBefore+todayProgress;
+    // cumDoneBefore in absolute terms = startOffset + cumDaysBefore
+    const cumDoneBefore=startOffset+cumDaysBefore;
+    this.state.modal={type:'logProgress',taskId,logMode:'position',logAmount:'',currentPosition,cumDoneBefore,todayProgress};
+    this.render();
+  },
+ renderLogProgressModal(){
+  const m=this.state.modal,task=this.state.tasks.find(t=>t.id===m.taskId); if(!task)return'';
+  const today=this.getToday(),goal=this.getTaskGoalForDay(task,today);
+  const startOffset=task.startOffset||0;
+  const totalBook=task.totalBook||task.dailyGoals.reduce((a,b)=>a+b,0)+startOffset;
+  const startOfToday=m.cumDoneBefore||0;
+  const totalReadSoFar=m.currentPosition||0;
+
+  // --- Multi-unit support ---
+  // Unidades alternativas disponíveis (além da unidade principal da tarefa)
+  const altUnits=this.getAltUnits(task);
+  const selectedUnit=m.selectedUnit||task.goalUnit;
+  const isAltUnit=selectedUnit!==task.goalUnit;
+  // Conversão: quantas unidades principais equivalem a 1 unidade alternativa
+  const convRate=isAltUnit?this.getConversionRate(task,selectedUnit):1;
+  // Preview de conversão em tempo real
+  const inputVal=m.logAmount!==undefined&&m.logAmount!==''?m.logAmount:'';
+  const previewPages=isAltUnit&&inputVal!==''&&convRate>0?Math.round(parseFloat(inputVal)*convRate):null;
+  // Se unidade alternativa não tem taxa definida, mostra aviso
+  const noConv=isAltUnit&&convRate===0;
+
+  return `<div class="overlay" onclick="if(event.target===this)App.closeModal()">
+    <div class="modal">
+      <div class="modal-handle"></div>
+      <div class="modal-title">📝 Registrar progresso</div>
+      <div class="modal-sub">${task.name}</div>
+
+      <div style="background:var(--surface2);border-radius:12px;padding:12px 14px;margin-bottom:16px">
+        <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px"><span style="color:var(--muted)">Meta hoje</span><b>${goal} ${task.goalUnit}</b></div>
+        <div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--muted)">Posição atual</span><b style="color:var(--accent)">${totalReadSoFar} / ${totalBook} ${task.goalUnit}</b></div>
+      </div>
+
+      ${altUnits.length>0?`
+      <div class="form-group">
+        <label class="form-label">📐 Registrar em qual unidade?</label>
+        <div class="toggle-group" style="flex-wrap:wrap">
+          <button class="toggle-btn ${!isAltUnit?'active':''}" onclick="App.setLogUnit('${task.goalUnit}')" style="font-size:12px">${task.goalUnit}</button>
+          ${altUnits.map(u=>`<button class="toggle-btn ${selectedUnit===u?'active':''}" onclick="App.setLogUnit('${u}')" style="font-size:12px">${u}</button>`).join('')}
+        </div>
+      </div>`:''}
+
+      <div class="form-group">
+        ${isAltUnit
+          ? `<label class="form-label">Quantos(as) <b style="color:var(--accent)">${selectedUnit}</b> você fez?</label>`
+          : `<label class="form-label">📍 Em qual ${task.goalUnit} você parou?</label>`}
+        <div class="log-controls">
+          <button class="log-ctrl-btn" onclick="App.adjustLogPosition(-1)">−</button>
+          <input class="log-ctrl-input" id="log-position" type="number" min="0"
+            value="${inputVal}"
+            placeholder="${isAltUnit?'ex: 1':'ex: '+totalReadSoFar}"
+            oninput="App.handleLogInput(event)">
+          <button class="log-ctrl-btn" onclick="App.adjustLogPosition(1)">+</button>
+        </div>
+        ${isAltUnit&&previewPages!==null&&!noConv?`
+          <div style="margin-top:8px;background:rgba(255,107,179,.1);border:1px solid rgba(255,107,179,.2);border-radius:10px;padding:8px 12px;font-size:12px;color:var(--accent)">
+            ≈ <b>${previewPages} ${task.goalUnit}</b> (${inputVal} ${selectedUnit} × ${convRate} ${task.goalUnit}/${selectedUnit})
+          </div>`:''}
+        ${noConv?`
+          <div style="margin-top:8px;background:rgba(139,124,246,.1);border:1px solid rgba(139,124,246,.2);border-radius:10px;padding:8px 12px;font-size:12px;color:var(--accent2)">
+            ⚠️ Taxa de conversão não definida. Será registrado apenas como +${inputVal||'?'} ${selectedUnit} (sem converter para ${task.goalUnit}).
+            <button onclick="App.openDefineConversion('${task.id}','${selectedUnit}')" style="display:block;margin-top:6px;background:var(--surface3);border:none;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;color:var(--text);cursor:pointer">Definir conversão agora</button>
+          </div>`:''}
+      </div>
+
+      <button class="btn-primary" onclick="App.confirmLogProgress()">✓ Confirmar</button>
+      <button class="btn-secondary" onclick="App.closeModal()">Cancelar</button>
+    </div>
+  </div>`;
+},
+
+  // --- Helpers para multi-unidade ---
+
+  // Retorna lista de unidades alternativas conhecidas (exceto a principal)
+  getAltUnits(task){
+    const base=['páginas','cap.','versículos','seções','km','min'];
+    const extra=Object.keys(task.unitConversions||{});
+    const all=[...new Set([...base,...extra])].filter(u=>u!==task.goalUnit);
+    return all;
+  },
+
+  // Dado um número de página, retorna em qual unidade (cap., versículo etc) ela está
+  pageToUnit(task,page){
+    const cp=task.chapterPages;
+    if(!cp||cp.length===0)return null;
+    // Encontra o último capítulo cuja página inicial <= page
+    let unit=1;
+    for(let i=0;i<cp.length;i++){
+      if(cp[i]>0&&cp[i]<=page)unit=i+1;
+    }
+    return unit;
+  },
+  // Retorna taxa de conversão: quantas unidades-base por 1 unidade alternativa
+  // Ex: 1 capítulo = 8 páginas → getConversionRate(task,'cap.') = 8
+  getConversionRate(task,unit){
+    const map=task.unitConversions||{};
+    return map[unit]||0; // 0 = não definido
+  },
+
+  // Atualiza a unidade selecionada no modal sem fechar
+  setLogUnit(unit){
+    if(!this.state.modal)return;
+    this.state.modal.selectedUnit=unit;
+    this.state.modal.logAmount='';
+    this.render();
+  },
+
+  // Ajusta o valor do input +/- 1 (respeitando a unidade selecionada)
+  adjustLogPosition(delta){
+    const m=this.state.modal,task=this.state.tasks.find(t=>t.id===m.taskId); if(!task)return;
+    const el=document.getElementById('log-position');
+    const selectedUnit=m.selectedUnit||task.goalUnit;
+    const isAltUnit=selectedUnit!==task.goalUnit;
+    if(isAltUnit){
+      // No modo alternativo: incrementa a quantidade de unidades alt
+      const cur=parseFloat(el?el.value:m.logAmount)||0;
+      const nv=Math.max(0,cur+delta);
+      if(el)el.value=nv;
+      m.logAmount=nv;
+    } else {
+      // No modo posição absoluta: ajusta a posição
+      const cur=parseInt(el?el.value:m.logAmount)||m.currentPosition||0;
+      const nv=Math.max(0,cur+delta);
+      if(el)el.value=nv;
+      m.logAmount=nv;
+    }
+    // Força atualizar preview sem re-render completo
+    this.state.modal.logAmount=parseFloat(el?el.value:m.logAmount)||0;
+    this.render();
+  },
+
+  // Atualiza logAmount conforme usuário digita
+  handleLogInput(event){
+    if(this.state.modal) this.state.modal.logAmount=event.target.value;
+  },
+
+  // Confirma e salva o progresso (com conversão se necessário)
+  confirmLogProgress(){
+    const m=this.state.modal,task=this.state.tasks.find(t=>t.id===m.taskId); if(!task)return;
+    const today=this.getToday();
+    const goal=this.getTaskGoalForDay(task,today);
+    const selectedUnit=m.selectedUnit||task.goalUnit;
+    const isAltUnit=selectedUnit!==task.goalUnit;
+    const inputVal=parseFloat(m.logAmount);
+    if(isNaN(inputVal)||inputVal<0){this.showToast('Digite um valor válido','error');return;}
+
+    let newProgressPages; // progresso em unidade principal (páginas etc)
+
+    if(isAltUnit){
+      // Caso especial: registrar por página com chapterPages definido
+      if(selectedUnit==='páginas'&&task.chapterPages&&task.chapterPages.length>0){
+        // Conta quantos capítulos completos o usuário passou com base na página
+        const cp=task.chapterPages;
+        const page=inputVal;
+        let chapsDone=0;
+        for(let i=0;i<cp.length;i++){
+          const nextStart=(i+1<cp.length&&cp[i+1]>0)?cp[i+1]:Infinity;
+          if(cp[i]>0&&page>=nextStart)chapsDone=i+1;
+        }
+        newProgressPages=chapsDone;
+        this.showToast('Página '+page+' → '+chapsDone+' '+task.goalUnit+' concluído(s)','success');
+      } else {
+      const convRate=this.getConversionRate(task,selectedUnit);
+      if(convRate>0){
+        // Converte: valor_alt × taxa = páginas equivalentes
+        const pagesEquiv=Math.round(inputVal*convRate);
+        // Soma ao progresso já existente do dia
+        const existingProgress=this.getTaskDayData(task.id,today).progress||0;
+        newProgressPages=existingProgress+pagesEquiv;
+        this.showToast(`+${pagesEquiv} ${task.goalUnit} (${inputVal} ${selectedUnit})`, 'success');
+      } else {
+        // Sem taxa: registra como "+N unidades alt" sem converter — armazena em altProgress
+        const data=this.getTaskDayData(task.id,today);
+        const altProgress=(data.altProgress||{});
+        altProgress[selectedUnit]=(altProgress[selectedUnit]||0)+inputVal;
+        this.setTaskDayData(task.id,today,{altProgress});
+        this.save(); this.closeModal(); this.render();
+        this.showToast(`+${inputVal} ${selectedUnit} registrado(s)`, 'success');
+        return;
+      }
+      } // fecha else do caso especial páginas+chapterPages
+    } else {
+      // Modo posição absoluta: newProgressPages = inputVal - cumDoneBefore
+      const cumDoneBefore=m.cumDoneBefore||0;
+      newProgressPages=Math.max(0,inputVal-cumDoneBefore);
+      // Se chapterPages definido, mostra em qual capítulo o usuário parou
+      if(task.chapterPages&&task.chapterPages.length>0){
+        const cp2=task.chapterPages;
+        const absPage=inputVal;
+        let curChap=1;
+        for(let i=0;i<cp2.length;i++){if(cp2[i]>0&&cp2[i]<=absPage)curChap=i+1;}
+        const nextChapStart=(curChap<cp2.length&&cp2[curChap]>0)?cp2[curChap]:null;
+        const chapInfo=nextChapStart?' · próx. cap. na pág. '+nextChapStart:' (último cap.)';
+        this.showToast('Pág. '+absPage+' → Cap. '+curChap+chapInfo,'info');
+      }
+
+    }
+
+    // Salva o progresso e dispara fluxo normal
+    this.setTaskDayData(task.id,today,{progress:newProgressPages});
+    this.save();
+    const isFull=newProgressPages>=goal;
+    if(isFull&&!this.getTaskDayData(task.id,today).finishedTime){
+      this.closeModal();
+      this.promptFinishTime(task.id,today);
+    } else {
+      this.closeModal();
+      this.render();
+    }
+    if(!isFull)this.showToast(`✓ ${newProgressPages}/${goal} ${task.goalUnit}`, 'success');
+  },
+
+  // Abre modal para definir taxa de conversão de uma unidade alternativa
+  openDefineConversion(taskId,unit){
+    this.state.modal={type:'defineConversion',taskId,unit};
+    this.render();
+  },
+  renderDefineConversionModal(){
+    const m=this.state.modal,task=this.state.tasks.find(t=>t.id===m.taskId); if(!task)return'';
+    const existing=(task.unitConversions||{})[m.unit]||'';
+    return `<div class="overlay center" onclick="if(event.target===this)App.closeModal()">
+      <div class="modal card-modal">
+        <div class="modal-title">📐 Definir conversão</div>
+        <div class="modal-sub">Quanto vale 1 <b>${m.unit}</b> em <b>${task.goalUnit}</b>?</div>
+        <div style="background:var(--surface2);border-radius:12px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:var(--muted)">
+          Ex: se 1 capítulo ≈ 8 páginas, digite <b style="color:var(--accent)">8</b>.
+        </div>
+        <div class="form-group">
+          <label class="form-label">1 ${m.unit} = quantos(as) ${task.goalUnit}?</label>
+          <input class="form-input" id="conv-rate-input" type="number" min="0.1" step="0.1" placeholder="ex: 8" value="${existing}" style="font-size:20px;font-weight:700;text-align:center">
+        </div>
+        <button class="btn-primary" onclick="App.saveConversionRate('${taskId}','${m.unit}')">💾 Salvar</button>
+        <button class="btn-secondary" onclick="App.openLogProgress('${taskId}')">← Voltar</button>
+      </div>
+    </div>`;
+  },
+  saveConversionRate(taskId,unit){
+    const el=document.getElementById('conv-rate-input');
+    const rate=parseFloat(el?el.value:0);
+    if(isNaN(rate)||rate<=0){this.showToast('Digite uma taxa válida','error');return;}
+    const task=this.state.tasks.find(t=>t.id===taskId); if(!task)return;
+    if(!task.unitConversions)task.unitConversions={};
+    task.unitConversions[unit]=rate;
+    this.save();
+    this.showToast(`✓ 1 ${unit} = ${rate} ${task.goalUnit}`,'success');
+    this.openLogProgress(taskId);
+  },
+
+  // ===================== TASK DETAIL =====================
+  openTaskDetail(taskId){this.state.modal={type:'taskDetail',taskId};this.render();},
+
+  fmtDate(dateStr){const[y,m,d]=dateStr.split('-').map(Number);return new Date(y,m-1,d).toLocaleDateString('pt-BR',{day:'numeric',month:'short'});},
+  fmtDateLong(dateStr){const[y,m,d]=dateStr.split('-').map(Number);return new Date(y,m-1,d).toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'});},
+  getDow(dateStr){const[y,m,d]=dateStr.split('-').map(Number);return new Date(y,m-1,d).getDay();},
+
+  renderTaskDetailModal(){
+    const m=this.state.modal,task=this.state.tasks.find(t=>t.id===m.taskId);
+    if(!task)return'';
+    const today=this.getToday();
+    return task.type==='goal'?this.renderGoalDetail(task,today):this.renderSimpleDetail(task,today);
+  },
+
+  renderGoalDetail(task,today){
+    const totalDays=task.dailyGoals.length;
+    const endDate=this.addDays(task.startDate,totalDays-1);
+    const todayIdx=this.daysDiff(task.startDate,today);
+    const startOffset=task.startOffset||0;
+    const totalBook=task.totalBook||task.dailyGoals.reduce((a,b)=>a+b,0)+startOffset;
+    let taskGoalSum=0,totalDone=0,missedDays=[],delayedDays=0;
+    const dowLabels=['D','S','T','Q','Q','S','S'];
+    const statusClass={done:'tl-done',partial:'tl-partial',missed:'tl-missed',today:'tl-today tl-partial',future:'tl-future',skipped:'tl-skipped'};
+
+    const dayStatuses=task.dailyGoals.map((goal,i)=>{
+      const date=this.addDays(task.startDate,i);
+      const data=this.getTaskDayData(task.id,date);
+      const progress=data.progress||0;
+      taskGoalSum+=goal; totalDone+=Math.min(goal,progress);
+      const isPast=date<today,isToday=date===today,isFuture=date>today;
+      let status='future';
+      if(isFuture)status='future';
+      else if(data.skipped)status='skipped';
+      else if(progress>=goal)status='done';
+      else if(progress>0)status='partial';
+      else if(isPast){status='missed';missedDays.push({date,goal,progress});delayedDays++;}
+      else if(isToday)status=progress>0?'partial':'today';
+      return{date,goal,progress,status,i};
+    });
+
+    // Global progress: (startOffset + totalDone) / totalBook
+    const totalReadSoFar=startOffset+totalDone;
+    const globalPct=totalBook>0?Math.min(100,Math.round((totalReadSoFar/totalBook)*100)):0;
+    // Task-only progress (days remaining)
+    const taskPct=taskGoalSum>0?Math.min(100,Math.round((totalDone/taskGoalSum)*100)):0;
+
+    const daysLeft=Math.max(0,this.daysDiff(today,endDate));
+    const isLate=today>endDate&&todayIdx<totalDays;
+    const isFinished=todayIdx>=totalDays&&taskPct===100;
+    const startDow=this.getDow(task.startDate);
+    const gridCells=[];
+    for(let i=0;i<startDow;i++)gridCells.push({empty:true});
+    dayStatuses.forEach(ds=>gridCells.push(ds));
+
+    return `<div class="overlay" onclick="if(event.target===this)App.closeModal()">
+      <div class="modal" style="padding-bottom:48px">
+        <div class="modal-handle"></div>
+        <div class="detail-header">
+          <div class="detail-icon">🎯</div>
+          <div><div class="detail-title">${task.name}</div><span class="detail-type-badge goal">Meta</span></div>
+        </div>
+
+        <div class="detail-meta-row">
+          <div class="detail-meta-box">
+            <div class="detail-meta-label">📅 Início</div>
+            <div class="detail-meta-val">${this.fmtDate(task.startDate)}</div>
+          </div>
+          <div class="detail-meta-box">
+            <div class="detail-meta-label">${isLate?'⚠️ Encerrou':'🏁 Término'}</div>
+            <div class="detail-meta-val ${isLate?'red':'accent'}">${this.fmtDate(endDate)}</div>
+          </div>
+          <div class="detail-meta-box">
+            <div class="detail-meta-label">${isFinished?'✅ Status':daysLeft===0?'⏰ Prazo':'⏳ Restam'}</div>
+            <div class="detail-meta-val ${isFinished?'green':isLate?'red':'accent'}">${isFinished?'Concluído':isLate?'Atrasado':daysLeft+' dia'+(daysLeft!==1?'s':'')}</div>
+          </div>
+        </div>
+
+        <div class="detail-meta-row">
+          <div class="detail-meta-box">
+            <div class="detail-meta-label">📖 Total do livro</div>
+            <div class="detail-meta-val">${totalBook} ${task.goalUnit}</div>
+          </div>
+          <div class="detail-meta-box">
+            <div class="detail-meta-label">✅ Lido no total</div>
+            <div class="detail-meta-val green">${totalReadSoFar} ${task.goalUnit}</div>
+          </div>
+          <div class="detail-meta-box">
+            <div class="detail-meta-label">⚠️ Atrasos</div>
+            <div class="detail-meta-val ${delayedDays>0?'red':'green'}">${delayedDays} dia${delayedDays!==1?'s':''}</div>
+          </div>
+        </div>
+
+        ${startOffset>0?`<div style="background:rgba(139,124,246,.1);border:1px solid rgba(139,124,246,.2);border-radius:10px;padding:10px 14px;font-size:12px;color:var(--accent2);margin-bottom:14px">
+          📍 Iniciado na ${task.goalUnit} <b>${startOffset+1}</b> — ${startOffset} ${task.goalUnit} já lidas antes de cadastrar
+        </div>`:''}
+
+        <div style="margin-bottom:18px">
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:5px">
+            <span>Progresso geral (${totalReadSoFar}/${totalBook})</span><b style="color:var(--accent)">${globalPct}%</b>
+          </div>
+          <div class="detail-progress-bar">
+            <div class="detail-progress-fill" style="width:${globalPct}%;background:${globalPct>=100?'linear-gradient(90deg,var(--green),#70ffd1)':'linear-gradient(90deg,var(--accent),#ffb5e6)'}"></div>
+          </div>
+          ${startOffset>0?`<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:6px">
+            <span>Progresso desta fase (${totalDone}/${taskGoalSum})</span><b style="color:var(--accent2)">${taskPct}%</b>
+          </div>
+          <div class="detail-progress-bar" style="margin-top:4px">
+            <div class="detail-progress-fill" style="width:${taskPct}%;background:var(--accent2)"></div>
+          </div>`:''}
+        </div>
+
+        <div class="detail-section">
+          <div class="detail-section-title">📆 Calendário da meta</div>
+          <div class="timeline-grid">
+            ${dowLabels.map(l=>`<div class="tl-col-head">${l}</div>`).join('')}
+            ${gridCells.map(cell=>{
+              if(cell.empty)return`<div class="tl-cell tl-empty"></div>`;
+              const cls=statusClass[cell.status]||'tl-future';
+              const day=parseInt(cell.date.split('-')[2]);
+              const tip=`${this.fmtDate(cell.date)}: ${cell.progress}/${cell.goal} ${task.goalUnit}`;
+              return`<div class="tl-cell ${cls}" title="${tip}">${day}</div>`;
+            }).join('')}
+          </div>
+          <div class="legend-row" style="margin-top:10px">
+            <div class="legend-item"><div class="legend-dot" style="background:rgba(46,213,115,.4)"></div>Feito</div>
+            <div class="legend-item"><div class="legend-dot" style="background:rgba(255,107,179,.3)"></div>Parcial</div>
+            <div class="legend-item"><div class="legend-dot" style="background:rgba(255,107,107,.3)"></div>Perdido</div>
+            <div class="legend-item"><div class="legend-dot" style="background:var(--surface3)"></div>Futuro</div>
+          </div>
+        </div>
+
+        ${missedDays.length>0?`
+        <div class="detail-section">
+          <div class="detail-section-title">⚠️ Dias não realizados (${missedDays.length})</div>
+          <div class="missed-day-list">
+            ${missedDays.map(({date,goal,progress})=>{
+              const pct=goal>0?Math.round((progress/goal)*100):0;
+              return`<div class="missed-day-item">
+                <div class="missed-day-dot"></div>
+                <div class="missed-day-info">
+                  <div class="missed-day-date">${this.fmtDateLong(date)}</div>
+                  <div class="missed-day-detail">${progress>0?progress+' de '+goal+' '+task.goalUnit+' feito':'Sem progresso registrado'}</div>
+                </div>
+                <div class="missed-day-pct">${pct}%</div>
+              </div>`;
+            }).join('')}
+          </div>
+        </div>`:(todayIdx>0?`<div style="background:rgba(46,213,115,.08);border:1px solid rgba(46,213,115,.2);border-radius:12px;padding:12px 14px;font-size:13px;color:var(--green);text-align:center">🎉 Nenhum dia perdido até agora! Continue assim.</div>`:'')}
+
+        <button class="btn-secondary" style="margin-top:16px" onclick="App.closeModal()">Fechar</button>
+        <button class="btn-primary" onclick="App.closeModal();App.openEditTask('${task.id}')">✏️ Editar tarefa</button>
+      </div>
+    </div>`;
+  },
+
+  renderSimpleDetail(task,today){
+    const past=[];
+    for(let i=27;i>=0;i--){const date=this.addDays(today,-i);if(this.isTaskActiveOnDate(task,date))past.push(date);}
+    const missedDays=past.filter(date=>date<today&&!this.getTaskDayData(task.id,date).completed&&!this.getTaskDayData(task.id,date).skipped);
+    const doneDays=past.filter(date=>this.getTaskDayData(task.id,date).completed);
+    const totalPast=past.filter(d=>d<today).length;
+    const pct=totalPast>0?Math.round((doneDays.length/totalPast)*100):0;
+    const dowLabels=['D','S','T','Q','Q','S','S'];
+    const startDow=past.length>0?this.getDow(past[0]):0;
+    const gridCells=[];
+    for(let i=0;i<startDow;i++)gridCells.push({empty:true});
+    const statusClass={done:'tl-done',missed:'tl-missed',today:'tl-today',future:'tl-future',skipped:'tl-skipped'};
+    past.forEach(date=>{
+      const d=this.getTaskDayData(task.id,date);
+      const isToday=date===today;
+      let status='future';
+      if(isToday)status=d.completed?'done':'today';
+      else if(d.skipped)status='skipped';
+      else if(d.completed)status='done';
+      else status='missed';
+      gridCells.push({date,status});
+    });
+    const dowNames=['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+    const activeDows=(task.daysOfWeek||[0,1,2,3,4,5,6]).map(i=>dowNames[i]).join(', ');
+    const firstDone=Object.keys(this.state.history).filter(date=>(this.state.history[date]||{})[task.id]?.completed).sort()[0];
+
+    return`<div class="overlay" onclick="if(event.target===this)App.closeModal()">
+      <div class="modal" style="padding-bottom:48px">
+        <div class="modal-handle"></div>
+        <div class="detail-header">
+          <div class="detail-icon">✅</div>
+          <div><div class="detail-title">${task.name}</div><span class="detail-type-badge simple">Tarefa simples</span></div>
+        </div>
+
+        <div class="detail-meta-row">
+          <div class="detail-meta-box">
+            <div class="detail-meta-label">📅 Primeira vez</div>
+            <div class="detail-meta-val">${firstDone?this.fmtDate(firstDone):'—'}</div>
+          </div>
+          <div class="detail-meta-box">
+            <div class="detail-meta-label">✅ Taxa 28d</div>
+            <div class="detail-meta-val ${pct>=80?'green':pct>=50?'accent':'red'}">${pct}%</div>
+          </div>
+          <div class="detail-meta-box">
+            <div class="detail-meta-label">⚠️ Faltas 28d</div>
+            <div class="detail-meta-val ${missedDays.length===0?'green':'red'}">${missedDays.length} dia${missedDays.length!==1?'s':''}</div>
+          </div>
+        </div>
+
+        <div class="detail-meta-row">
+          <div class="detail-meta-box" style="flex:2">
+            <div class="detail-meta-label">🗓️ Dias ativos</div>
+            <div class="detail-meta-val" style="font-size:12px">${activeDows}</div>
+          </div>
+          <div class="detail-meta-box">
+            <div class="detail-meta-label">⏰ Horário</div>
+            <div class="detail-meta-val" style="font-size:12px">${task.schedule==='fixed'?task.scheduledTime:'Flexível'}</div>
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <div class="detail-section-title">📆 Últimos 28 dias</div>
+          <div class="timeline-grid">
+            ${dowLabels.map(l=>`<div class="tl-col-head">${l}</div>`).join('')}
+            ${gridCells.map(cell=>{
+              if(cell.empty)return`<div class="tl-cell tl-empty"></div>`;
+              const cls=statusClass[cell.status]||'tl-future';
+              const day=parseInt(cell.date.split('-')[2]);
+              return`<div class="tl-cell ${cls}" title="${this.fmtDate(cell.date)}: ${cell.status}">${day}</div>`;
+            }).join('')}
+          </div>
+          <div class="legend-row" style="margin-top:10px">
+            <div class="legend-item"><div class="legend-dot" style="background:rgba(46,213,115,.4)"></div>Feito</div>
+            <div class="legend-item"><div class="legend-dot" style="background:rgba(255,107,107,.3)"></div>Não feito</div>
+            <div class="legend-item"><div class="legend-dot" style="background:var(--surface3);border:1px dashed rgba(255,255,255,.15)"></div>Pulado</div>
+          </div>
+        </div>
+
+        ${missedDays.length>0?`
+        <div class="detail-section">
+          <div class="detail-section-title">⚠️ Dias não realizados (${missedDays.length})</div>
+          <div class="missed-day-list">
+            ${missedDays.slice(-8).reverse().map(date=>`<div class="missed-day-item">
+              <div class="missed-day-dot"></div>
+              <div class="missed-day-info">
+                <div class="missed-day-date">${this.fmtDateLong(date)}</div>
+                <div class="missed-day-detail">${task.schedule==='fixed'&&task.scheduledTime?'Marcada para '+task.scheduledTime:'Tarefa flexível não realizada'}</div>
+              </div>
+              <div class="missed-day-pct">✗</div>
+            </div>`).join('')}
+            ${missedDays.length>8?`<div style="text-align:center;font-size:12px;color:var(--muted);padding:6px">+ ${missedDays.length-8} dias anteriores</div>`:''}
+          </div>
+        </div>`:(totalPast>0?`<div style="background:rgba(46,213,115,.08);border:1px solid rgba(46,213,115,.2);border-radius:12px;padding:12px 14px;font-size:13px;color:var(--green);text-align:center">🎉 Nenhum dia perdido nos últimos 28 dias!</div>`:'')}
+
+        <button class="btn-secondary" style="margin-top:16px" onclick="App.closeModal()">Fechar</button>
+        <button class="btn-primary" onclick="App.closeModal();App.openEditTask('${task.id}')">✏️ Editar tarefa</button>
+      </div>
+    </div>`;
+  },
+
+  // ===================== SUGGESTION / MISSED =====================
+  openSuggestion(taskId){this.state.modal={type:'suggestion',taskId};this.render();},
+  renderSuggestionModal(){
+    const m=this.state.modal,task=this.state.tasks.find(t=>t.id===m.taskId); if(!task)return'';
+    const info=this.getMissedInsights().find(i=>i.task.id===m.taskId);
+    return `<div class="overlay center" onclick="if(event.target===this)App.closeModal()">
+      <div class="modal card-modal">
+        <div class="modal-title">💡 O que deseja fazer?</div>
+        <div class="modal-sub"><b>${task.name}</b> não concluída em ${info?info.missed+' dias':'alguns dias'} esta semana.</div>
+        <div class="option-list">
+          ${task.type==='goal'?`
+            <button class="option-btn" onclick="App.suggestionReduceGoal('${task.id}')"><span class="opt-icon">⬇️</span><div><b>Diminuir meta</b><br><small style="color:var(--muted)">Reduzir quantidade diária</small></div></button>
+            <button class="option-btn" onclick="App.suggestionExtendDays('${task.id}')"><span class="opt-icon">📅</span><div><b>Adicionar mais dias</b></div></button>`:''}
+          ${task.schedule==='fixed'?`
+            <button class="option-btn" onclick="App.suggestionChangeSchedule('${task.id}','flexible')"><span class="opt-icon">🔄</span><div><b>Tornar flexível</b></div></button>
+            <button class="option-btn" onclick="App.suggestionChangeTime('${task.id}')"><span class="opt-icon">⏰</span><div><b>Mudar horário</b></div></button>`:`
+            <button class="option-btn" onclick="App.openEditTask('${task.id}')"><span class="opt-icon">✏️</span><div><b>Editar tarefa</b></div></button>`}
+          <button class="option-btn" style="border-color:rgba(255,107,107,.3)" onclick="App.deleteTask('${task.id}');App.closeModal()"><span class="opt-icon">🗑️</span><div><b style="color:var(--red)">Remover tarefa</b></div></button>
+          <button class="option-btn" onclick="App.closeModal()"><span class="opt-icon">✓</span><div><b>Manter como está</b></div></button>
+        </div>
+      </div>
+    </div>`;
+  },
+  suggestionReduceGoal(taskId){const task=this.state.tasks.find(t=>t.id===taskId);if(!task||task.type!=='goal')return;const pct=parseFloat(prompt('Reduzir para qual % da meta atual?\n(ex: 80 = 80%):','80'))/100;if(isNaN(pct)||pct<=0||pct>1)return;task.dailyGoals=task.dailyGoals.map(g=>Math.round(g*pct));this.save();this.closeModal();this.render();},
+  suggestionExtendDays(taskId){const task=this.state.tasks.find(t=>t.id===taskId);if(!task||task.type!=='goal')return;const extra=parseInt(prompt('Quantos dias a mais?','3')||'0');if(isNaN(extra)||extra<=0)return;const today=this.getToday(),todayIdx=this.daysDiff(task.startDate,today);let done=0;task.dailyGoals.forEach((g,i)=>{const d=this.addDays(task.startDate,i);done+=Math.min(g,this.getTaskDayData(taskId,d).progress||0);});const remaining=task.dailyGoals.reduce((a,b)=>a+b,0)-done;const newDays=Math.max(1,task.dailyGoals.length-todayIdx-1+extra);const perDay=Math.ceil(remaining/newDays);const newGoals=[...task.dailyGoals.slice(0,todayIdx+1)];for(let i=0;i<newDays;i++)newGoals.push(perDay);task.dailyGoals=newGoals;this.save();this.closeModal();this.render();},
+  suggestionChangeSchedule(taskId,s){const task=this.state.tasks.find(t=>t.id===taskId);if(task){task.schedule=s;task.scheduledTime=null;this.save();}this.closeModal();this.render();},
+  suggestionChangeTime(taskId){const task=this.state.tasks.find(t=>t.id===taskId);if(!task)return;const t=prompt('Novo horário (ex: 20:00):',task.scheduledTime||'08:00');if(t){task.scheduledTime=t;this.save();}this.closeModal();this.render();},
+
+  checkMissedTasks(){
+    const today=this.getToday(),nowMins=this.timeToMins(this.getNow());
+    this.state.tasks.forEach(task=>{
+      if(!this.isTaskActiveOnDate(task,today)||task.schedule!=='fixed'||!task.scheduledTime) return;
+      const done = this.isTaskDayDone(task, today);
+      if(!done && nowMins>this.timeToMins(task.scheduledTime)+30){
+        const key=`missed_${task.id}_${today}`;
+        if(!localStorage.getItem(key)){
+          localStorage.setItem(key,'1');
+          if(!this.state.modal) this.state.modal={type:'missedTask',taskId:task.id};
+        }
+      }
+    });
+  },
+  renderMissedTaskModal(){
+    const m=this.state.modal,task=this.state.tasks.find(t=>t.id===m.taskId); if(!task)return'';
+    return `<div class="overlay center">
+      <div class="modal card-modal">
+        <div style="font-size:36px;text-align:center;margin-bottom:12px">⏰</div>
+        <div class="modal-title" style="text-align:center">Tarefa atrasada</div>
+        <div class="missed-task-info"><div class="missed-task-name">${task.name}</div><div class="missed-task-time">⚠️ Estava marcada para ${task.scheduledTime}</div></div>
+        <div class="option-list">
+          <button class="option-btn" onclick="App.closeModal();App.render()"><span class="opt-icon">▶️</span><div><b>Fazer agora</b></div></button>
+          <button class="option-btn" onclick="App.missedReschedule('${task.id}')"><span class="opt-icon">⏰</span><div><b>Marcar outro horário</b></div></button>
+          <button class="option-btn" onclick="App.missedMakeFlexible('${task.id}')"><span class="opt-icon">🔄</span><div><b>Tornar flexível hoje</b></div></button>
+          <button class="option-btn" onclick="App.missedSkip('${task.id}')"><span class="opt-icon">⏭️</span><div><b>Pular hoje</b></div></button>
+        </div>
+      </div>
+    </div>`;
+  },
+  missedReschedule(taskId){const task=this.state.tasks.find(t=>t.id===taskId);if(!task)return;const t=prompt('Novo horário (ex: 20:00):',this.getNow());if(t){task.scheduledTime=t;this.save();}this.closeModal();this.render();},
+  missedMakeFlexible(taskId){const task=this.state.tasks.find(t=>t.id===taskId);if(task){task.schedule='flexible';task.scheduledTime=null;this.save();}this.closeModal();this.render();},
+  missedSkip(taskId){this.setTaskDayData(taskId,this.getToday(),{skipped:true});this.save();this.closeModal();this.render();},
+  openInsights(){this.state.modal={type:'insights'};this.render();},
+  renderInsightsModal(){
+    const insights=this.getMissedInsights();
+    return `<div class="overlay" onclick="if(event.target===this)App.closeModal()">
+      <div class="modal">
+        <div class="modal-handle"></div>
+        <div class="modal-title">💡 Sugestões da semana</div>
+        <div class="option-list">
+          ${insights.map(({task,missed,total})=>`
+            <button class="option-btn" onclick="App.state.modal={type:'suggestion',taskId:'${task.id}'};App.render()">
+              <span class="opt-icon">⚠️</span>
+              <div><b>${task.name}</b><br><small style="color:var(--muted)">Perdida ${missed} de ${total} dias</small></div>
+            </button>`).join('')}
+        </div>
+        <button class="btn-secondary" onclick="App.closeModal()">Fechar</button>
+      </div>
+    </div>`;
+  },
+
+  // ===================== MEDALS VIEW =====================
+  openMedalDetail(taskId){
+    this.state.modal={type:'medalDetail',taskId};
+    this.render();
+  },
+  renderMedalDetailModal(){
+    const m=this.state.modal;
+    const task=this.state.tasks.find(t=>t.id===m.taskId); if(!task)return'';
+    if(!this.state.medalMonth)return'';
+    const {y,mo}=this.state.medalMonth; const month=mo||this.state.medalMonth.m;
+    const year=y;
+    const pad=n=>String(n).padStart(2,'0');
+    const daysInMonth=new Date(year,month,0).getDate();
+    const monthNames=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+    const dayNames=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+    const medalDefs={platinum:{icon:'💎',label:'Platinum'},ouro:{icon:'🥇',label:'Ouro'},prata:{icon:'🥈',label:'Prata'},bronze:{icon:'🥉',label:'Bronze'}};
+    const days=[];
+    for(let d=1;d<=daysInMonth;d++){
+      const date=`${year}-${pad(month)}-${pad(d)}`;
+      const dayGoal=this.getTaskGoalForDay(task,date);
+      if(!dayGoal)continue;
+      const prog=this.getTaskDayData(task.id,date).progress||0;
+      const med=this.getMedal(prog,dayGoal);
+      if(med)days.push({date,d,dayGoal,prog,med});
+    }
+    const rowsHtml=days.length===0
+      ?`<div style="color:var(--muted);text-align:center;padding:20px 0;font-size:14px">Nenhuma medalha neste mês.</div>`
+      :days.map(({date,d,dayGoal,prog,med})=>{
+        const [yr,mo2,da]=date.split('-').map(Number);
+        const dow=dayNames[new Date(yr,mo2-1,da).getDay()];
+        const pct=Math.round(prog/dayGoal*100);
+        return`<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface2);border-radius:10px;margin-bottom:7px">
+          <div style="text-align:center;min-width:36px">
+            <div style="font-size:9px;font-weight:700;text-transform:uppercase;color:var(--muted)">${dow}</div>
+            <div style="font-size:18px;font-weight:800;line-height:1.1">${d}</div>
+          </div>
+          <span class="medal-badge ${med.cls}">${med.icon} ${med.label}</span>
+          <div style="flex:1;font-size:12px;color:var(--muted)">${prog}/${dayGoal} ${task.goalUnit} <b style="color:var(--accent)">(${pct}%)</b></div>
+        </div>`;
+      }).join('');
+    return`<div class="overlay center" onclick="if(event.target===this)App.closeModal()">
+      <div class="modal card-modal">
+        <div class="modal-handle"></div>
+        <div class="modal-title" style="font-size:16px">${task.name}</div>
+        <div class="modal-sub">Medalhas de ${monthNames[month-1]} ${year}</div>
+        <div style="margin-bottom:12px;display:flex;gap:6px;flex-wrap:wrap">
+          ${['platinum','ouro','prata','bronze'].map(c=>{const cnt=days.filter(x=>x.med.cls===c).length;return cnt>0?`<span class="rank-medal-count ${c}">${medalDefs[c].icon} ${cnt}</span>`:''}).join('')}
+        </div>
+        <div style="max-height:55vh;overflow-y:auto;padding-right:2px">${rowsHtml}</div>
+        <button class="btn-secondary" onclick="App.closeModal()" style="margin-top:12px">Fechar</button>
+      </div>
+    </div>`;
+  },
+  renderMedalsView(){
+    const now=new Date();
+    if(!this.state.medalMonth)this.state.medalMonth={y:now.getFullYear(),m:now.getMonth()+1};
+    const {y,m}=this.state.medalMonth;
+    const monthNames=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+    const ranking=this.getMedalRanking(y,m);
+    const totalByType={bronze:0,prata:0,ouro:0,platinum:0};
+    ranking.forEach(r=>{totalByType.bronze+=r.counts.bronze;totalByType.prata+=r.counts.prata;totalByType.ouro+=r.counts.ouro;totalByType.platinum+=r.counts.platinum;});
+    const prevM=m===1?{y:y-1,m:12}:{y,m:m-1};
+    const nextM=m===12?{y:y+1,m:1}:{y,m:m+1};
+    const isCurrentMonth=y===now.getFullYear()&&m===now.getMonth()+1;
+
+    const medalDefs=[
+      {cls:'platinum',icon:'💎',label:'Platinum',desc:'Acima da meta',sub:'progress > meta do dia'},
+      {cls:'ouro',    icon:'🥇',label:'Ouro',    desc:'Meta atingida', sub:'progress = meta do dia'},
+      {cls:'prata',   icon:'🥈',label:'Prata',   desc:'Metade da meta',sub:'≥ 50% da meta do dia'},
+      {cls:'bronze',  icon:'🥉',label:'Bronze',  desc:'Abaixo da metade',sub:'< 50% da meta do dia'},
+    ];
+
+    const legendHtml=medalDefs.map(d=>`
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface2);border-radius:10px">
+        <span style="font-size:20px">${d.icon}</span>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:700"><span class="medal-badge ${d.cls}" style="margin-right:6px">${d.label}</span>${d.desc}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">${d.sub}</div>
+        </div>
+        <div style="font-size:18px;font-weight:800;color:var(--muted)">${totalByType[d.cls]||0}</div>
+      </div>`).join('');
+
+    const rankingHtml=ranking.length===0
+      ?`<div style="text-align:center;color:var(--muted);padding:32px 0;font-size:14px">Nenhuma medalha registrada neste mês.</div>`
+      :ranking.map((r,i)=>{
+        const medals=['platinum','ouro','prata','bronze'].filter(c=>r.counts[c]>0)
+          .map(c=>{const d=medalDefs.find(x=>x.cls===c);return`<span class="rank-medal-count ${c}">${d.icon} ${r.counts[c]}</span>`;}).join('');
+        const podium=i===0?'🥇':i===1?'🥈':i===2?'🥉':`${i+1}º`;
+        return`<div class="rank-task-row" onclick="App.openMedalDetail('${r.task.id}')" style="cursor:pointer;transition:background .15s" onmouseenter="this.style.background='var(--surface3)'" onmouseleave="this.style.background=''">
+          <div style="font-size:18px;font-weight:800;min-width:28px;text-align:center">${podium}</div>
+          <div class="rank-task-name">${r.task.name}</div>
+          <div class="rank-medals">${medals}</div>
+          <div style="font-size:12px;color:var(--muted);flex-shrink:0">›</div>
+        </div>`;
+      }).join('');
+
+    return`<div class="view">
+      <div class="header">
+        <div class="header-left"><h1>🏅 <span>Medalhas</span></h1></div>
+      </div>
+      <div style="padding:0 16px 16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <button onclick="App.state.medalMonth=${JSON.stringify(prevM)};App.render()" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:8px 14px;font-size:16px;cursor:pointer;color:var(--text);font-family:var(--font)">‹</button>
+          <div style="font-size:16px;font-weight:800">${monthNames[m-1]} ${y}${isCurrentMonth?` <span style="font-size:11px;color:var(--accent);font-weight:600">(atual)</span>`:''}</div>
+          <button onclick="App.state.medalMonth=${JSON.stringify(nextM)};App.render()" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:8px 14px;font-size:16px;cursor:pointer;color:var(--text);font-family:var(--font)">›</button>
+        </div>
+
+        <div style="font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Como funcionam</div>
+        <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:20px">${legendHtml}</div>
+
+        <div style="font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Ranking por tarefa</div>
+        ${rankingHtml}
+      </div>
+    </div>`;
+  },
+
+  // ===================== INIT =====================
+  init(){
+    console.log('App.init - state.modal (before loadState):', this.state && this.state.modal);
+    this.loadState();
+    console.log('App.init - state.modal (after loadState):', this.state && this.state.modal);
+    this.checkMissedTasks();
+    console.log('App.init - state.modal (after checkMissedTasks):', this.state && this.state.modal);
+    this.render();
+  }
+};
+
+document.addEventListener('DOMContentLoaded',()=>App.init());
+</script>
+</body>
+</html>
