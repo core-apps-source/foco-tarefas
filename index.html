@@ -356,6 +356,11 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);display:flex
              onkeydown="if(event.key==='Enter')Auth.submit()" />
     </div>
     <button class="auth-btn" id="auth-submit-btn" onclick="Auth.submit()">Entrar</button>
+    <div id="forgot-wrap" style="text-align:center; margin-top:12px;">
+      <a onclick="Auth.forgotPassword()" style="font-size:12px; color:var(--muted); cursor:pointer; text-decoration:underline;">
+        Esqueceu a senha?
+      </a>
+    </div>
     <div class="auth-divider"><span>ou</span></div>
     <div class="auth-toggle" id="auth-toggle">
       Não tem conta? <a onclick="Auth.toggleMode()">Criar conta</a>
@@ -416,8 +421,29 @@ const Auth = {
     document.getElementById('auth-toggle').innerHTML = isLogin
       ? 'Não tem conta? <a onclick="Auth.toggleMode()">Criar conta</a>'
       : 'Já tem conta? <a onclick="Auth.toggleMode()">Entrar</a>';
+    // Esconde "Esqueceu a senha?" no modo de cadastro
+    document.getElementById('forgot-wrap').style.display = isLogin ? 'block' : 'none';
     this.showError('');
     this.showSuccess('');
+  },
+
+  async forgotPassword() {
+    const email = document.getElementById('auth-email').value.trim();
+    if (!email) {
+      this.showError('Digite seu e-mail acima para receber o link de redefinição.');
+      return;
+    }
+    this.showError('');
+    this.showSuccess('');
+    try {
+      const { error } = await db.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.href,
+      });
+      if (error) throw error;
+      this.showSuccess('✅ E-mail enviado! Verifique sua caixa de entrada para redefinir a senha.');
+    } catch(e) {
+      this.showError('Erro ao enviar e-mail: ' + e.message);
+    }
   },
 
   async submit() {
