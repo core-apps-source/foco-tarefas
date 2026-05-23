@@ -7,11 +7,29 @@
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#0b0b14;--surface:#13131f;--surface2:#1e1e30;--surface3:#252538;
-  --accent:#ff6bb3;--accent2:#8b7cf6;--green:#2ed573;--red:#ff6b6b;
-  --text:#e8e4f4;--muted:#6b6880;--border:rgba(255,255,255,0.06);
-  --r:16px;--font:'Outfit',sans-serif;
+  /* Estas são variáveis CSS (Custom Properties) usadas para definir o tema do aplicativo */
+
+  --bg: #0b0b14;             /* Cor de fundo principal (bem escura) */
+  --surface: #13131f;        /* Cor de superfície primária */
+  --surface2: #1e1e30;       /* Cor de superfície secundária */
+  --surface3: #252538;       /* Cor de superfície terciária */
+  --accent: #ff6bb3;
+  --accent2: #e879f9;
+  --accent-light: #ffb5e6;
+  --green: #2ed573;
+  --red: #ff6b6b;
+  --text: #e8e4f4;
+  --muted: #6b6880;
+  --border: rgba(255,255,255,0.06);
+  --r: 16px;
+  --font: 'Outfit', sans-serif;
 }
+[data-theme="rosa"]{--accent:#ff6bb3;--accent2:#e879f9;--accent-light:#ffb5e6;}
+[data-theme="laranja"]{--accent:#ff9f43;--accent2:#8b7cf6;--accent-light:#ffcc70;}
+[data-theme="azul"]{--accent:#3b82f6;--accent2:#1d4ed8;--accent-light:#60a5fa;}
+[data-theme="vermelho"]{--accent:#ef4444;--accent2:#dc2626;--accent-light:#f87171;}
+[data-theme="lilas"]{--accent:#c084fc;--accent2:#a78bfa;--accent-light:#ddd6fe;}
+[data-theme="azul"] body{background:linear-gradient(165deg,#020617 0%,#0c1929 42%,#0f172a 100%);background-attachment:fixed;}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 html,body{height:100%;overflow:hidden;}
 body{font-family:var(--font);background:var(--bg);color:var(--text);display:flex;justify-content:center;align-items:stretch;}
@@ -31,8 +49,10 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);display:flex
 .ring-wrap svg{transform:rotate(-90deg);}
 .ring-bg{fill:none;stroke:var(--surface2);stroke-width:10;}
 .ring-fill{fill:none;stroke:var(--accent);stroke-width:10;stroke-linecap:round;transition:stroke-dashoffset .6s cubic-bezier(.4,0,.2,1);}
+.ring-fill.ring-future{stroke:var(--accent2);}
 .ring-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
 .ring-pct{font-size:30px;font-weight:800;line-height:1;color:var(--accent);}
+.ring-pct.ring-future{color:var(--accent2);}
 .ring-label{font-size:11px;color:var(--muted);font-weight:500;margin-top:3px;letter-spacing:.5px;text-transform:uppercase;}
 .ring-meta{margin-top:10px;font-size:13px;color:var(--muted);}
 .ring-meta b{color:var(--text);font-weight:600;}
@@ -57,17 +77,18 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);display:flex
 .goal-bar-top{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:4px;}
 .goal-bar-top span:last-child{color:var(--accent);font-weight:600;}
 .goal-bar{height:5px;background:var(--surface3);border-radius:999px;overflow:hidden;}
-.goal-bar-fill{height:100%;background:linear-gradient(90deg,var(--accent),#ffb5e6);border-radius:999px;transition:width .4s ease;}
-.goal-bar-fill.full{background:linear-gradient(90deg,var(--green),#70ffd1);}
+.goal-bar-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-light));border-radius:999px;transition:width .4s ease;}
+.goal-bar-fill.full{background:linear-gradient(90deg,var(--accent),var(--accent-light));filter:brightness(1.1);}
+.detail-progress-fill.is-overall{background:linear-gradient(90deg,var(--accent),var(--accent-light));}
 .task-right{display:flex;align-items:center;gap:6px;flex-shrink:0;}
-.log-btn{background:rgba(255,107,179,.15);color:var(--accent);border:none;border-radius:8px;padding:5px 10px;font-family:var(--font);font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;}
-.log-btn:hover{background:rgba(255,107,179,.3);}
+.log-btn{background:color-mix(in srgb,var(--accent) 15%,transparent);color:var(--accent);border:none;border-radius:8px;padding:5px 10px;font-family:var(--font);font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;}
+.log-btn:hover{background:color-mix(in srgb,var(--accent) 30%,transparent);}
 .revert-btn{background:var(--surface2);color:var(--muted);border:1px solid var(--border);border-radius:10px;padding:8px 10px;font-family:var(--font);font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;}
 .revert-btn:hover{background:var(--surface3);}
 .empty-state{text-align:center;padding:48px 32px;color:var(--muted);}
 .empty-state .emoji{font-size:48px;margin-bottom:12px;}
 .empty-state p{font-size:14px;line-height:1.6;}
-.fab{position:fixed;bottom:88px;right:50%;transform:translateX(calc(50% - 8px));width:56px;height:56px;border-radius:18px;background:var(--accent);border:none;cursor:pointer;font-size:28px;color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 24px rgba(255,107,179,.4);transition:all .15s;z-index:20;}
+.fab{position:fixed;bottom:88px;right:50%;transform:translateX(calc(50% - 8px));width:56px;height:56px;border-radius:18px;background:var(--accent);border:none;cursor:pointer;font-size:28px;color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 24px color-mix(in srgb,var(--accent) 40%,transparent);transition:all .15s;z-index:20;}
 .fab:hover{filter:brightness(1.1);}
 @media(max-width:480px){.fab{right:20px;transform:none;}}
 .bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:rgba(11,11,20,.95);backdrop-filter:blur(20px);border-top:1px solid var(--border);display:flex;z-index:30;padding-bottom:env(safe-area-inset-bottom);}
@@ -125,7 +146,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);display:flex
 .form-input::placeholder{color:var(--muted);}
 .toggle-group{display:flex;gap:8px;flex-wrap:wrap;}
 .toggle-btn{flex:1;padding:10px;border-radius:10px;background:var(--surface2);border:1px solid var(--border);font-family:var(--font);font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;transition:all .15s;text-align:center;}
-.toggle-btn.active{background:rgba(255,107,179,.15);color:var(--accent);border-color:rgba(255,107,179,.4);}
+.toggle-btn.active{background:color-mix(in srgb,var(--accent) 15%,transparent);color:var(--accent);border-color:color-mix(in srgb,var(--accent) 40%,transparent);}
 .btn-primary{width:100%;padding:14px;border-radius:14px;background:var(--accent);border:none;font-family:var(--font);font-size:15px;font-weight:700;color:#fff;cursor:pointer;transition:all .15s;margin-top:8px;display:block;text-align:center;}
 .btn-primary:hover{filter:brightness(1.1);}
 .btn-secondary{width:100%;padding:14px;border-radius:14px;background:var(--surface2);border:1px solid var(--border);font-family:var(--font);font-size:15px;font-weight:600;color:var(--text);cursor:pointer;transition:all .15s;margin-top:6px;display:block;text-align:center;}
@@ -156,7 +177,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);display:flex
 .sync-option-sub{font-size:12px;color:var(--muted);margin-top:2px;}
 .chip{display:inline-flex;align-items:center;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:2px 8px;font-size:11px;font-weight:600;color:var(--muted);}
 .chip.green{background:rgba(46,213,115,.1);color:var(--green);border-color:rgba(46,213,115,.2);}
-.chip.orange{background:rgba(255,107,179,.1);color:var(--accent);border-color:rgba(255,107,179,.2);}
+.chip.orange{background:color-mix(in srgb,var(--accent) 10%,transparent);color:var(--accent);border-color:color-mix(in srgb,var(--accent) 20%,transparent);}
 .wizard-steps{display:flex;gap:6px;margin-bottom:20px;}
 .wizard-step{height:3px;flex:1;border-radius:999px;background:var(--surface3);}
 .wizard-step.done{background:var(--accent);}
@@ -176,7 +197,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);display:flex
 .detail-icon{width:52px;height:52px;border-radius:16px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;}
 .detail-title{font-size:19px;font-weight:800;line-height:1.2;}
 .detail-type-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;padding:3px 9px;border-radius:6px;margin-top:4px;}
-.detail-type-badge.goal{background:rgba(255,107,179,.12);color:var(--accent);border:1px solid rgba(255,107,179,.25);}
+.detail-type-badge.goal{background:color-mix(in srgb,var(--accent) 12%,transparent);color:var(--accent);border:1px solid color-mix(in srgb,var(--accent) 25%,transparent);}
 .detail-type-badge.simple{background:rgba(46,213,115,.12);color:var(--green);border:1px solid rgba(46,213,115,.25);}
 
 .detail-meta-row{display:flex;gap:8px;margin-bottom:16px;}
@@ -195,7 +216,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);display:flex
 .tl-col-head{font-size:9px;font-weight:700;color:var(--muted);text-align:center;padding:2px 0;letter-spacing:.3px;}
 .tl-cell{aspect-ratio:1;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;position:relative;cursor:default;}
 .tl-cell.tl-done{background:rgba(46,213,115,.2);color:var(--green);border:1px solid rgba(46,213,115,.3);}
-.tl-cell.tl-partial{background:rgba(255,107,179,.15);color:var(--accent);border:1px solid rgba(255,107,179,.25);}
+.tl-cell.tl-partial{background:color-mix(in srgb,var(--accent) 15%,transparent);color:var(--accent);border:1px solid color-mix(in srgb,var(--accent) 25%,transparent);}
 .tl-cell.tl-missed{background:rgba(255,107,107,.15);color:var(--red);border:1px solid rgba(255,107,107,.2);}
 .tl-cell.tl-today{outline:2px solid var(--accent);outline-offset:1px;}
 .tl-cell.tl-future{background:var(--surface3);color:var(--muted);border:1px solid transparent;}
@@ -233,7 +254,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);display:flex
 .date-pill.selected{background:var(--accent);border-color:var(--accent);}
 .date-pill.selected .dp-dow{color:rgba(255,255,255,.75);}
 .date-pill.selected .dp-num{color:#fff;}
-.date-pill.is-today:not(.selected){border-color:rgba(255,107,179,.5);background:rgba(255,107,179,.08);}
+.date-pill.is-today:not(.selected){border-color:color-mix(in srgb,var(--accent) 50%,transparent);background:color-mix(in srgb,var(--accent) 8%,transparent);}
 .dp-dow{font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);}
 .dp-num{font-size:18px;font-weight:800;color:var(--text);line-height:1;}
 .dp-dot-row{display:flex;gap:2px;min-height:6px;align-items:center;}
@@ -271,6 +292,18 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);display:flex
 .rank-medal-count.prata{background:rgba(160,160,180,.12);color:#a8a9ad;border-color:rgba(160,160,180,.3);}
 .rank-medal-count.ouro{background:rgba(255,200,0,.12);color:#c9a800;border-color:rgba(255,200,0,.3);}
 .rank-medal-count.platinum{background:rgba(100,220,255,.1);color:#3db8d8;border-color:rgba(100,220,255,.25);}
+
+.theme-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 16px 24px;}
+.theme-card{background:var(--surface);border:2px solid var(--border);border-radius:var(--r);padding:14px;cursor:pointer;text-align:left;font-family:var(--font);transition:all .2s;display:flex;flex-direction:column;gap:10px;}
+.theme-card:hover{background:var(--surface2);}
+.theme-card.active{border-color:var(--accent);box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 35%,transparent);}
+.theme-swatch{height:52px;border-radius:12px;border:1px solid var(--border);}
+.theme-card-name{font-size:14px;font-weight:700;color:var(--text);}
+.theme-card-desc{font-size:11px;color:var(--muted);margin-top:-4px;}
+.theme-card-check{font-size:11px;font-weight:700;color:var(--accent);display:none;}
+.theme-card.active .theme-card-check{display:block;}
+.theme-preview-ring{width:100%;height:8px;background:var(--surface3);border-radius:999px;overflow:hidden;margin-top:4px;}
+.theme-preview-fill{height:100%;border-radius:999px;width:68%;}
 </style>
 </head>
 <body>
@@ -281,22 +314,45 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);display:flex
 const GDRIVE_FILENAME = 'foco-backup.foco';
 const GDRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
 
+const THEMES = {
+  rosa:    { name:'Rosa',     desc:'Rosa suave', swatch:'linear-gradient(90deg,#ff6bb3,#ffb5e6)', fill:'linear-gradient(90deg,#ff6bb3,#ffb5e6)' },
+  laranja: { name:'Laranja',  desc:'Laranja clássico', swatch:'linear-gradient(90deg,#ff9f43,#ffcc70)', fill:'linear-gradient(90deg,#ff9f43,#ffcc70)' },
+  azul:    { name:'Azul',     desc:'Azul escuro em gradiente', swatch:'linear-gradient(90deg,#1d4ed8,#3b82f6,#60a5fa)', fill:'linear-gradient(90deg,#3b82f6,#60a5fa)' },
+  vermelho:{ name:'Vermelho', desc:'Vermelho intenso', swatch:'linear-gradient(90deg,#dc2626,#f87171)', fill:'linear-gradient(90deg,#ef4444,#f87171)' },
+  lilas:   { name:'Lilás',    desc:'Roxo lilás', swatch:'linear-gradient(90deg,#a78bfa,#ddd6fe)', fill:'linear-gradient(90deg,#c084fc,#ddd6fe)' },
+};
+
 const App = {
   state: null,
   gdriveToken: null,
 
   defaultState() {
-    return { tasks:[], history:{}, view:'today', summaryPeriod:'daily', modal:null, wizard:null, selectedDate: null };
+    return { tasks:[], history:{}, view:'today', summaryPeriod:'daily', modal:null, wizard:null, selectedDate: null, theme:'rosa' };
   },
 
   loadState() {
     try {
       const saved = localStorage.getItem('foco_v2');
       this.state = saved ? JSON.parse(saved) : this.defaultState();
+      if (!this.state.theme || !THEMES[this.state.theme]) this.state.theme = 'rosa';
     } catch(e) { this.state = this.defaultState(); }
   },
 
   save() { localStorage.setItem('foco_v2', JSON.stringify(this.state)); },
+
+  applyTheme() {
+    const t = (this.state && THEMES[this.state.theme]) ? this.state.theme : 'rosa';
+    document.documentElement.setAttribute('data-theme', t);
+  },
+
+  setTheme(id) {
+    if (!THEMES[id]) return;
+    this.state.theme = id;
+    this.applyTheme();
+    this.save();
+    this.render();
+    this.showToast('Paleta: '+THEMES[id].name, 'success');
+  },
 
   // ===================== HELPERS =====================
   // BUGFIX: usa data LOCAL (não UTC) para evitar virar o dia às 21h em UTC-3
@@ -557,6 +613,7 @@ const App = {
         ${this.navBtn('today','📋','Hoje')}
         ${this.navBtn('summary','📊','Resumo')}
         ${this.navBtn('manage','⚙️','Tarefas')}
+        ${this.navBtn('appearance','🎨','Paleta')}
         ${this.navBtn('medals','🏅','Medalhas')}
         <button class="nav-btn" onclick="App.openSync()" style="${this.state.view==='sync'?'color:var(--accent)':''}">
           <span class="nav-icon">🔄</span><span class="nav-label">Sincronizar</span>
@@ -570,9 +627,33 @@ const App = {
     return `<button class="nav-btn ${this.state.view===v?'active':''}" onclick="App.setView('${v}')">
       <span class="nav-icon">${icon}</span><span class="nav-label">${label}</span></button>`;
   },
-  setView(v){this.state.view=v;this.render();},
+  setView(v){this.state.view=v;this.save();this.render();},
   renderView(){
-    return {today:()=>this.renderToday(),summary:()=>this.renderSummary(),manage:()=>this.renderManage(),medals:()=>this.renderMedalsView()}[this.state.view]?.()??'';
+    return {today:()=>this.renderToday(),summary:()=>this.renderSummary(),manage:()=>this.renderManage(),appearance:()=>this.renderAppearance(),medals:()=>this.renderMedalsView()}[this.state.view]?.()??'';
+  },
+
+  renderAppearance() {
+    const cur = this.state.theme || 'rosa';
+    const cards = Object.entries(THEMES).map(([id, t]) => `
+      <button type="button" class="theme-card ${id===cur?'active':''}" onclick="App.setTheme('${id}')">
+        <div class="theme-swatch" style="background:${t.swatch}"></div>
+        <div class="theme-preview-ring"><div class="theme-preview-fill" style="background:${t.fill}"></div></div>
+        <div>
+          <div class="theme-card-name">${t.name}</div>
+          <div class="theme-card-desc">${t.desc}</div>
+        </div>
+        <div class="theme-card-check">✓ Selecionado</div>
+      </button>`).join('');
+    return `<div class="view">
+      <div class="header">
+        <div class="header-left"><h1>Paleta<span>.</span></h1><p>Tema completo do app</p></div>
+      </div>
+      <div class="summary-card" style="margin-bottom:16px">
+        <div class="summary-card-title">Cores do app</div>
+        <p style="font-size:13px;color:var(--muted);line-height:1.5">Ao escolher uma paleta, botões, barras, anel de %, título e destaques passam para essa cor.</p>
+      </div>
+      <div class="theme-grid">${cards}</div>
+    </div>`;
   },
 
   // ===================== DATE NAVIGATION =====================
@@ -653,7 +734,7 @@ const App = {
     const dateLabel = dtObj.toLocaleDateString('pt-BR', {weekday:'long', day:'numeric', month:'long'});
 
     // Ring color: future = purple, past = muted, today = accent
-    const ringColor = isFuture ? 'var(--accent2)' : isPast ? (pct>=80?'var(--green)':'var(--accent)') : 'var(--accent)';
+    const ringFutureCls = isFuture ? 'ring-future' : '';
     const ringLabel = isFuture ? 'planejado' : 'concluído';
 
     return `<div class="view" id="today-view">
@@ -674,12 +755,12 @@ const App = {
         <div class="ring-wrap">
           <svg width="140" height="140" viewBox="0 0 120 120">
             <circle class="ring-bg" cx="60" cy="60" r="52"/>
-            <circle class="ring-fill" cx="60" cy="60" r="52"
+            <circle class="ring-fill ${ringFutureCls}" cx="60" cy="60" r="52"
               stroke-dasharray="${C}" stroke-dashoffset="${offset}"
-              style="stroke:${ringColor};${pct===0?'opacity:0':''}"/>
+              style="${pct===0?'opacity:0':''}"/>
           </svg>
           <div class="ring-center">
-            <div class="ring-pct" style="color:${ringColor}">${isFuture ? tasks.length + '<br><span style="font-size:14px;font-weight:600">tarefas</span>' : pct+'%'}</div>
+            <div class="ring-pct ${ringFutureCls}">${isFuture ? tasks.length + '<br><span style="font-size:14px;font-weight:600">tarefas</span>' : pct+'%'}</div>
             ${!isFuture ? `<div class="ring-label">${ringLabel}</div>` : ''}
           </div>
         </div>
@@ -802,9 +883,9 @@ const App = {
         </div>
         <div style="margin-top:10px;">
           <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:4px">
-            <span>Progresso geral do livro ao fim do dia</span><span style="color:var(--accent2)">${globalPct}%</span>
+            <span>Progresso geral do livro ao fim do dia</span><span style="color:var(--accent)">${globalPct}%</span>
           </div>
-          <div class="goal-bar"><div class="goal-bar-fill" style="width:${globalPct}%;background:var(--accent2)"></div></div>
+          <div class="goal-bar"><div class="goal-bar-fill" style="width:${globalPct}%"></div></div>
           <div style="font-size:10px;color:var(--muted);margin-top:3px;text-align:right">dia ${idx+1} de ${totalDays}</div>
         </div>
       </div>
@@ -1127,7 +1208,7 @@ const App = {
       const day=parseInt(date.split('-')[2]);
       let bg='var(--surface2)',color='var(--muted)';
       if (!isFuture&&pct>=80){bg='rgba(46,213,115,.25)';color='var(--green)';}
-      else if (!isFuture&&pct>=50){bg='rgba(255,107,179,.2)';color='var(--accent)';}
+      else if (!isFuture&&pct>=50){bg='color-mix(in srgb, var(--accent) 20%, transparent)';color='var(--accent)';}
       else if (!isFuture&&pct>0){bg='rgba(255,107,107,.15)';color='var(--red)';}
       html+=`<div style="text-align:center;background:${bg};color:${color};border-radius:8px;padding:5px 2px;font-size:11px;font-weight:700;border:2px solid ${isToday?'var(--accent)':'transparent'}">${day}</div>`;
     });
@@ -1204,7 +1285,7 @@ const App = {
 
         <div style="font-size:11px;font-weight:700;letter-spacing:.5px;color:var(--muted);text-transform:uppercase;margin:16px 0 8px">📁 Arquivo local</div>
         <div class="sync-option" onclick="App.exportFile()">
-          <div class="sync-icon-wrap" style="background:rgba(255,107,179,.1)">⬇️</div>
+          <div class="sync-icon-wrap" style="background:color-mix(in srgb,var(--accent) 10%,transparent)">⬇️</div>
           <div class="sync-option-info"><div class="sync-option-title">Exportar .foco</div><div class="sync-option-sub">Baixa arquivo com todos os dados</div></div>
           <div style="font-size:14px;color:var(--muted)">→</div>
         </div>
@@ -1940,7 +2021,7 @@ const App = {
           <button class="log-ctrl-btn" onclick="App.adjustLogPosition(1)">+</button>
         </div>
         ${isAltUnit&&previewPages!==null&&!noConv?`
-          <div style="margin-top:8px;background:rgba(255,107,179,.1);border:1px solid rgba(255,107,179,.2);border-radius:10px;padding:8px 12px;font-size:12px;color:var(--accent)">
+          <div style="margin-top:8px;background:color-mix(in srgb,var(--accent) 10%,transparent);border:1px solid color-mix(in srgb,var(--accent) 20%,transparent);border-radius:10px;padding:8px 12px;font-size:12px;color:var(--accent)">
             ≈ <b>${previewPages} ${task.goalUnit}</b> (${inputVal} ${selectedUnit} × ${convRate} ${task.goalUnit}/${selectedUnit})
           </div>`:''}
         ${noConv?`
@@ -2234,7 +2315,7 @@ const App = {
             <span>Progresso geral (${totalReadSoFar}/${totalBook})</span><b style="color:var(--accent)">${globalPct}%</b>
           </div>
           <div class="detail-progress-bar">
-            <div class="detail-progress-fill" style="width:${globalPct}%;background:${globalPct>=100?'linear-gradient(90deg,var(--green),#70ffd1)':'linear-gradient(90deg,var(--accent),#ffb5e6)'}"></div>
+            <div class="detail-progress-fill is-overall" style="width:${globalPct}%"></div>
           </div>
           ${startOffset>0?`<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:6px">
             <span>Progresso desta fase (${totalDone}/${taskGoalSum})</span><b style="color:var(--accent2)">${taskPct}%</b>
@@ -2258,7 +2339,7 @@ const App = {
           </div>
           <div class="legend-row" style="margin-top:10px">
             <div class="legend-item"><div class="legend-dot" style="background:rgba(46,213,115,.4)"></div>Feito</div>
-            <div class="legend-item"><div class="legend-dot" style="background:rgba(255,107,179,.3)"></div>Parcial</div>
+            <div class="legend-item"><div class="legend-dot" style="background:color-mix(in srgb,var(--accent) 30%,transparent)"></div>Parcial</div>
             <div class="legend-item"><div class="legend-dot" style="background:rgba(255,107,107,.3)"></div>Perdido</div>
             <div class="legend-item"><div class="legend-dot" style="background:var(--surface3)"></div>Futuro</div>
           </div>
@@ -2586,11 +2667,9 @@ const App = {
 
   // ===================== INIT =====================
   init(){
-    console.log('App.init - state.modal (before loadState):', this.state && this.state.modal);
     this.loadState();
-    console.log('App.init - state.modal (after loadState):', this.state && this.state.modal);
+    this.applyTheme();
     this.checkMissedTasks();
-    console.log('App.init - state.modal (after checkMissedTasks):', this.state && this.state.modal);
     this.render();
   }
 };
