@@ -602,35 +602,21 @@ const Cloud = {
 const Auth = {
   mode: 'login',
 
-async init() {
-  const { data: { session } } = await db.auth.getSession();
-  if (session) {
-    this.showApp();
-    await Cloud.pull();              // ← era Cloud.pull()()
-    await Cloud.subscribeRealtime();
-    App.render();
-  }
-
-  db.auth.onAuthStateChange(async (event, session) => {
-    if (event === 'SIGNED_IN' && session) {
+  async init() {
+    const { data: { session } } = await db.auth.getSession();
+    if (session) {
       this.showApp();
-      await Cloud.pull();            // ← era Cloud.pull()()
-      await Cloud.subscribeRealtime();
-      App.render();
     }
-    if (event === 'SIGNED_OUT') {
-      await Cloud.unsubscribe();
-      this.showLogin();
-    }
-  });
-},
+    db.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session) this.showApp();
+      if (event === 'SIGNED_OUT') this.showLogin();
+    });
+  },
 
   showApp() {
     document.getElementById('auth-screen').classList.add('hidden');
     document.getElementById('logout-btn').classList.add('visible');
     App.init();
-    // Sync bidirecional ao entrar: mescla local + nuvem e sobe o resultado
-    setTimeout(() => Cloud.pull()().then(ok => { if (ok) App.render(); }), 500);
   },
 
   showLogin() {
