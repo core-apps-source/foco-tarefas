@@ -334,6 +334,14 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);display:flex
 .auth-logout-btn:hover{color:var(--text);background:var(--surface3);}
 .auth-logout-btn.visible{display:block;}
 
+/* ===== CLOUD SYNC ===== */
+.cloud-sync-btn{width:40px;height:40px;border-radius:12px;background:var(--surface2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:17px;transition:all .15s;position:relative;}
+.cloud-sync-btn:hover{background:var(--surface3);}
+.cloud-sync-btn.syncing{animation:spinPulse 1s linear infinite;}
+.cloud-sync-btn.sync-ok::after{content:'';position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:50%;background:var(--green);border:2px solid var(--bg);}
+.cloud-sync-btn.sync-err::after{content:'';position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:50%;background:var(--red);border:2px solid var(--bg);}
+@keyframes spinPulse{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+
 </style>
 </head>
 <body>
@@ -382,6 +390,93 @@ const { createClient } = supabase;
 const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // =====================================================
+//  CLOUD SYNC (Supabase)
+// =====================================================
+const Cloud = {
+  _syncTimeout: null,
+  _status: 'idle', // idle | syncing | ok | error
+
+  async getUserId() {
+    const { data: { session } } = await db.auth.getSession();
+    return session?.user?.id || null;
+  },
+
+  setStatus(s) {
+    this._status = s;
+    const btn = document.getElementById('cloud-sync-btn');
+    if (!btn) return;
+    btn.classList.remove('syncing','sync-ok','sync-err');
+    if (s === 'syncing') btn.classList.add('syncing');
+    else if (s === 'ok') btn.classList.add('sync-ok');
+    else if (s === 'error') btn.classList.add('sync-err');
+  },
+
+  // Salva dados no Supabase (upsert)
+  async push() {
+    const userId = await this.getUserId();
+    if (!userId) return;
+    this.setStatus('syncing');
+    try {
+      const payload = App.getExportData();
+      const { error } = await db.from('user_data').upsert({
+        user_id: userId,
+        data: payload,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'user_id' });
+      if (error) throw error;
+      this.setStatus('ok');
+      localStorage.setItem('foco_cloud_sync', Date.now().toString());
+    } catch(e) {
+      console.error('Cloud push error:', e);
+      this.setStatus('error');
+    }
+  },
+
+  // Carrega dados do Supabase
+  async pull() {
+    const userId = await this.getUserId();
+    if (!userId) return false;
+    this.setStatus('syncing');
+    try {
+      const { data, error } = await db.from('user_data')
+        .select('data, updated_at')
+        .eq('user_id', userId)
+        .single();
+      if (error && error.code !== 'PGRST116') throw error; // PGRST116 = no rows
+      if (!data) { this.setStatus('ok'); return false; }
+      // Mescla dados da nuvem com localStorage
+      App.importDataSilent(JSON.stringify(data.data));
+      this.setStatus('ok');
+      localStorage.setItem('foco_cloud_sync', Date.now().toString());
+      return true;
+    } catch(e) {
+      console.error('Cloud pull error:', e);
+      this.setStatus('error');
+      return false;
+    }
+  },
+
+  // Debounced push — evita salvar a cada keystroke
+  schedulePush() {
+    clearTimeout(this._syncTimeout);
+    this._syncTimeout = setTimeout(() => this.push(), 1500);
+  },
+
+  // Botão manual de refresh
+  async manualRefresh() {
+    App.showToast('☁️ Sincronizando…', '');
+    const pulled = await this.pull();
+    if (pulled) {
+      App.render();
+      App.showToast('✅ Dados atualizados!', 'success');
+    } else {
+      await this.push();
+      App.showToast('✅ Sincronizado!', 'success');
+    }
+  }
+};
+
+// =====================================================
 //  AUTH
 // =====================================================
 const Auth = {
@@ -402,6 +497,8 @@ const Auth = {
     document.getElementById('auth-screen').classList.add('hidden');
     document.getElementById('logout-btn').classList.add('visible');
     App.init();
+    // Carrega dados da nuvem ao entrar
+    setTimeout(() => Cloud.pull().then(pulled => { if (pulled) App.render(); }), 500);
   },
 
   showLogin() {
@@ -539,7 +636,7 @@ const App = {
     } catch(e) { this.state = this.defaultState(); }
   },
 
-  save() { localStorage.setItem('foco_v2', JSON.stringify(this.state)); },
+  save() { localStorage.setItem('foco_v2', JSON.stringify(this.state)); Cloud.schedulePush(); },
 
   applyTheme() {
     const t = (this.state && THEMES[this.state.theme]) ? this.state.theme : 'rosa';
@@ -945,6 +1042,7 @@ const App = {
           <p>${isToday ? dateLabel : dateLabel + (isFuture?' · prévia':' · histórico')}</p>
         </div>
         <div class="header-btns">
+          <div class="header-btn cloud-sync-btn" id="cloud-sync-btn" onclick="Cloud.manualRefresh()" title="Sincronizar agora">☁️</div>
           ${this.getMissedInsights().length>0 && isToday ? `<div class="header-btn" onclick="App.openInsights()">💡</div>` : ''}
           ${!isToday ? `<div class="header-btn" onclick="App.goToToday()" title="Ir para hoje" style="font-size:13px;font-weight:700;color:var(--accent)">Hoje</div>` : ''}
         </div>
@@ -1451,7 +1549,7 @@ const App = {
   renderSyncModal() {
     const gConnected=!!this.gdriveToken;
     const clientIdSet=!!localStorage.getItem('foco_gdrive_client_id');
-    const lastSync=localStorage.getItem('foco_last_sync');
+    const lastSync=localStorage.getItem('foco_cloud_sync') || localStorage.getItem('foco_last_sync');
     const lastSyncLabel=lastSync?new Date(parseInt(lastSync)).toLocaleString('pt-BR'):null;
     return `<div class="overlay" onclick="if(event.target===this)App.closeModal()">
       <div class="modal">
@@ -1459,10 +1557,21 @@ const App = {
         <div class="modal-title">🔄 Sincronizar dados</div>
         <div class="modal-sub" style="margin-bottom:16px">
           Exporte ou importe para sincronizar entre dispositivos.
-          ${lastSyncLabel?`<br><span style="color:var(--green);font-size:12px">✓ Último backup: ${lastSyncLabel}</span>`:''}
+          ${lastSyncLabel?`<br><span style="color:var(--green);font-size:12px">✓ Último sync: ${lastSyncLabel}</span>`:''}
         </div>
 
-        <div style="font-size:11px;font-weight:700;letter-spacing:.5px;color:var(--muted);text-transform:uppercase;margin-bottom:8px">☁️ Google Drive</div>
+        <div style="font-size:11px;font-weight:700;letter-spacing:.5px;color:var(--muted);text-transform:uppercase;margin-bottom:8px">☁️ Nuvem (automático)</div>
+        <div style="background:rgba(46,213,115,.08);border:1px solid rgba(46,213,115,.2);border-radius:14px;padding:14px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px">
+          <div style="font-size:24px">☁️</div>
+          <div style="flex:1">
+            <div style="font-size:14px;font-weight:700;color:var(--text)">Supabase — conta conectada</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:2px">Seus dados salvam automaticamente a cada alteração</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:16px">
+          <button class="btn-primary" onclick="Cloud.push().then(()=>App.showToast('✅ Salvo na nuvem!','success'))" style="margin-top:0;flex:1;font-size:13px;padding:11px">⬆️ Salvar agora</button>
+          <button class="btn-secondary" onclick="Cloud.pull().then(p=>{if(p){App.render();App.showToast('✅ Dados carregados!','success');}else App.showToast('Nada novo na nuvem','');})" style="margin-top:0;flex:1;font-size:13px;padding:11px">⬇️ Carregar nuvem</button>
+        </div>
         ${clientIdSet?`
           <div class="sync-option" onclick="App.gdriveAuth()">
             <div class="sync-icon-wrap" style="background:rgba(66,133,244,.1)">
@@ -1580,6 +1689,25 @@ const App = {
   },
   getExportData() {
     return {tasks:this.state.tasks,history:this.state.history,exportedAt:new Date().toISOString(),version:2};
+  },
+
+  // Importa silenciosamente (sem toast, sem fechar modal) — usado pelo Cloud sync
+  importDataSilent(jsonStr) {
+    try {
+      const parsed = JSON.parse(jsonStr);
+      if (!parsed.tasks && !parsed.history) return;
+      const existingIds = new Set(this.state.tasks.map(t => t.id));
+      const newTasks = [...this.state.tasks];
+      (parsed.tasks || []).forEach(t => { if (!existingIds.has(t.id)) newTasks.push(t); });
+      const mergedHistory = { ...this.state.history };
+      Object.entries(parsed.history || {}).forEach(([date, entries]) => {
+        mergedHistory[date] = { ...(mergedHistory[date] || {}), ...entries };
+      });
+      this.state.tasks = newTasks;
+      this.state.history = mergedHistory;
+      if (parsed.theme && !this.state.theme) this.state.theme = parsed.theme;
+      localStorage.setItem('foco_v2', JSON.stringify(this.state));
+    } catch(e) { console.error('importDataSilent error:', e); }
   },
 
   // ===================== GOOGLE DRIVE =====================
