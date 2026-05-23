@@ -334,14 +334,6 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);display:flex
 .auth-logout-btn:hover{color:var(--text);background:var(--surface3);}
 .auth-logout-btn.visible{display:block;}
 
-/* ===== CLOUD SYNC ===== */
-.cloud-sync-btn{width:40px;height:40px;border-radius:12px;background:var(--surface2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:17px;transition:all .15s;position:relative;}
-.cloud-sync-btn:hover{background:var(--surface3);}
-.cloud-sync-btn.syncing{animation:spinPulse 1s linear infinite;}
-.cloud-sync-btn.sync-ok::after{content:'';position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:50%;background:var(--green);border:2px solid var(--bg);}
-.cloud-sync-btn.sync-err::after{content:'';position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:50%;background:var(--red);border:2px solid var(--bg);}
-@keyframes spinPulse{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
-
 </style>
 </head>
 <body>
@@ -390,83 +382,9 @@ const { createClient } = supabase;
 const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // =====================================================
-// CLOUD SYNC — Supabase Realtime (fonte da verdade)
+//  CLOUD SYNC (Supabase) — manual only, no auto-save
 // =====================================================
 const Cloud = {
-  _syncTimeout: null,
-  _status: 'idle',
-  _realtimeChannel: null,
-  _localMutex: false,        // impede push() enquanto aplicamos delta do Realtime
-  _lastPushHash: null,       // evita push redundante se dados não mudaram
-
-  // --------------------------------------------------
-  // Utilitários
-  // --------------------------------------------------
-  async getUserId() {
-    const { data: { session } } = await db.auth.getSession();
-    return session?.user?.id || null;
-  },
-
-  setStatus(s) {
-    this._status = s;
-    const btn = document.getElementById('cloud-sync-btn');
-    if (!btn) return;
-    btn.classList.remove('syncing', 'sync-ok', 'sync-err');
-    if (s === 'syncing') btn.classList.add('syncing');
-    else if (s === 'ok')    btn.classList.add('sync-ok');
-    else if (s === 'error') btn.classList.add('sync-err');
-  },
-
-  /** Hash leve para detectar se o payload mudou de verdade */
-  _hash(payload) {
-    return JSON.stringify(payload?.tasks?.map(t => t.id + t.updatedAt + t.done));
-  },
-
-  // --------------------------------------------------
-  // PUSH — envia estado local para a nuvem
-  // Só deve ser chamado após ação *local* do usuário.
-  // --------------------------------------------------
-  async push() {
-    if (this._localMutex) {
-      // Estamos aplicando um delta remoto — não fazer push agora
-      console.log('Cloud.push: bloqueado por mutex (delta remoto em andamento)');
-      return false;
-    }
-
-    const userId = await this.getUserId();
-    if (!userId) { console.warn('Cloud.push: sem sessão'); return false; }
-
-    const payload = App.getExportData();
-    const hash = this._hash(payload);
-    if (hash === this._lastPushHash) {
-      console.log('Cloud.push: sem mudanças, ignorando');
-      return true;
-    }
-
-    this.setStatus('syncing');
-    try {
-      const { error } = await db.from('user_data').upsert(
-        { user_id: userId, data: payload, updated_at: new Date().toISOString() },
-        { onConflict: 'user_id' }
-      );
-      if (error) throw error;
-      this._lastPushHash = hash;
-      this.setStatus('ok');
-      localStorage.setItem('foco_cloud_sync', Date.now().toString());
-      console.log('Cloud.push: sucesso —', payload.tasks?.length, 'tarefas');
-      return true;
-    } catch (e) {
-      console.error('Cloud.push erro:', e.message, e);
-      this.setStatus('error');
-      return false;
-    }
-  },
-
-  // --------------------------------------------------
-  // PULL — busca snapshot completo da nuvem (usado só
-  // na inicialização ou no refresh manual).
-  // --------------------------------------------------
-  const Cloud = {
   _status: 'idle',
   _realtimeChannel: null,
 
@@ -489,7 +407,6 @@ const Cloud = {
   async push() {
     const userId = await this.getUserId();
     if (!userId) { console.warn('Cloud.push: sem sessão'); return false; }
-
     this.setStatus('syncing');
     try {
       const payload = App.getExportData();
@@ -513,7 +430,6 @@ const Cloud = {
   async pull() {
     const userId = await this.getUserId();
     if (!userId) { console.warn('Cloud.pull: sem sessão'); return false; }
-
     this.setStatus('syncing');
     try {
       const { data, error } = await db
@@ -521,14 +437,12 @@ const Cloud = {
         .select('data, updated_at')
         .eq('user_id', userId)
         .maybeSingle();
-
       if (error) throw error;
       if (!data?.data) {
         console.log('Cloud.pull: nenhum dado na nuvem ainda');
         this.setStatus('ok');
         return false;
       }
-
       App.importDataSilent(JSON.stringify(data.data));
       this.setStatus('ok');
       localStorage.setItem('foco_cloud_sync', Date.now().toString());
@@ -545,12 +459,10 @@ const Cloud = {
   async subscribeRealtime() {
     const userId = await this.getUserId();
     if (!userId) return;
-
     if (this._realtimeChannel) {
       await db.removeChannel(this._realtimeChannel);
       this._realtimeChannel = null;
     }
-
     this._realtimeChannel = db
       .channel(`user_data:${userId}`)
       .on(
@@ -587,8 +499,7 @@ const Cloud = {
 
   // Botão restaurar — puxa último backup
   async manualRestore() {
-    const confirm = window.confirm('Restaurar último backup da nuvem? O estado local será substituído.');
-    if (!confirm) return;
+    if (!window.confirm('Restaurar último backup da nuvem? O estado local será substituído.')) return;
     App.showToast('☁️ Restaurando…', '');
     const ok = await this.pull();
     App.render();
@@ -596,6 +507,7 @@ const Cloud = {
     else     App.showToast('❌ Nenhum backup encontrado', 'error');
   },
 };
+
 // =====================================================
 //  AUTH
 // =====================================================
@@ -606,10 +518,21 @@ const Auth = {
     const { data: { session } } = await db.auth.getSession();
     if (session) {
       this.showApp();
+      await Cloud.pull();
+      await Cloud.subscribeRealtime();
+      App.render();
     }
-    db.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' && session) this.showApp();
-      if (event === 'SIGNED_OUT') this.showLogin();
+    db.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        this.showApp();
+        await Cloud.pull();
+        await Cloud.subscribeRealtime();
+        App.render();
+      }
+      if (event === 'SIGNED_OUT') {
+        await Cloud.unsubscribe();
+        this.showLogin();
+      }
     });
   },
 
@@ -754,7 +677,7 @@ const App = {
     } catch(e) { this.state = this.defaultState(); }
   },
 
-  save() { localStorage.setItem('foco_v2', JSON.stringify(this.state)); Cloud.schedulePush(); },
+  save() { localStorage.setItem('foco_v2', JSON.stringify(this.state)); },
 
   applyTheme() {
     const t = (this.state && THEMES[this.state.theme]) ? this.state.theme : 'rosa';
@@ -890,8 +813,8 @@ const App = {
       .filter(r=>r.score>0)
       .sort((a,b)=>b.score-a.score);
   },
-  isTaskActiveOnDate(task, date) {
-    if (!task.active) return false;
+ isTaskActiveOnDate(task, date) {
+    if (!task.active || task.deleted) return false;
     if (task.type==='goal') {
       const idx=this.daysDiff(task.startDate,date);
       return idx>=0&&idx<task.dailyGoals.length;
@@ -1160,7 +1083,6 @@ const App = {
           <p>${isToday ? dateLabel : dateLabel + (isFuture?' · prévia':' · histórico')}</p>
         </div>
         <div class="header-btns">
-          <div class="header-btn cloud-sync-btn" id="cloud-sync-btn" onclick="Cloud.manualRefresh()" title="Sincronizar agora">☁️</div>
           ${this.getMissedInsights().length>0 && isToday ? `<div class="header-btn" onclick="App.openInsights()">💡</div>` : ''}
           ${!isToday ? `<div class="header-btn" onclick="App.goToToday()" title="Ir para hoje" style="font-size:13px;font-weight:700;color:var(--accent)">Hoje</div>` : ''}
         </div>
@@ -1633,8 +1555,8 @@ const App = {
   },
 
   // ===================== MANAGE =====================
-  renderManage() {
-    const tasks=this.state.tasks;
+renderManage() {
+    const tasks = this.state.tasks.filter(t => !t.deleted);
     return `<div class="view">
       <div class="header">
         <div class="header-left"><h1>Tarefas<span>.</span></h1><p>${tasks.length} tarefa${tasks.length!==1?'s':''} cadastrada${tasks.length!==1?'s':''}</p></div>
@@ -1657,9 +1579,11 @@ const App = {
       </div>
     </div>`;
   },
-  deleteTask(taskId) {
+ deleteTask(taskId) {
     if (!confirm('Remover esta tarefa?')) return;
-    this.state.tasks=this.state.tasks.filter(t=>t.id!==taskId); this.save(); this.render();
+    const task = this.state.tasks.find(t => t.id === taskId);
+    if (task) task.deleted = true;
+    this.save(); this.render();
   },
 
   // ===================== SYNC =====================
@@ -1667,7 +1591,7 @@ const App = {
   renderSyncModal() {
     const gConnected=!!this.gdriveToken;
     const clientIdSet=!!localStorage.getItem('foco_gdrive_client_id');
-    const lastSync=localStorage.getItem('foco_cloud_sync') || localStorage.getItem('foco_last_sync');
+    const lastSync=localStorage.getItem('foco_last_sync');
     const lastSyncLabel=lastSync?new Date(parseInt(lastSync)).toLocaleString('pt-BR'):null;
     return `<div class="overlay" onclick="if(event.target===this)App.closeModal()">
       <div class="modal">
@@ -1675,21 +1599,16 @@ const App = {
         <div class="modal-title">🔄 Sincronizar dados</div>
         <div class="modal-sub" style="margin-bottom:16px">
           Exporte ou importe para sincronizar entre dispositivos.
-          ${lastSyncLabel?`<br><span style="color:var(--green);font-size:12px">✓ Último sync: ${lastSyncLabel}</span>`:''}
+          ${lastSyncLabel?`<br><span style="color:var(--green);font-size:12px">✓ Último backup: ${lastSyncLabel}</span>`:''}
         </div>
 
-        <div style="font-size:11px;font-weight:700;letter-spacing:.5px;color:var(--muted);text-transform:uppercase;margin-bottom:8px">☁️ Nuvem (automático)</div>
-        <div style="background:rgba(46,213,115,.08);border:1px solid rgba(46,213,115,.2);border-radius:14px;padding:14px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px">
-          <div style="font-size:24px">☁️</div>
-          <div style="flex:1">
-            <div style="font-size:14px;font-weight:700;color:var(--text)">Supabase — conta conectada</div>
-            <div style="font-size:12px;color:var(--muted);margin-top:2px">Seus dados salvam automaticamente a cada alteração</div>
-          </div>
-        </div>
+        <div style="font-size:11px;font-weight:700;letter-spacing:.5px;color:var(--muted);text-transform:uppercase;margin-bottom:8px">☁️ Supabase</div>
         <div style="display:flex;gap:8px;margin-bottom:16px">
-          <button class="btn-primary" onclick="Cloud.push().then(ok=>App.showToast(ok?'✅ Salvo na nuvem!':'❌ Erro ao salvar',ok?'success':'error'))" style="margin-top:0;flex:1;font-size:13px;padding:11px">⬆️ Salvar agora</button>
-          <button class="btn-secondary" onclick="Cloud.pull()().then(ok=>{if(ok){App.render();App.showToast('✅ Sincronizado!','success');}else App.showToast('❌ Erro ao sincronizar','error');})" style="margin-top:0;flex:1;font-size:13px;padding:11px">🔄 Sincronizar</button>
+          <button class="btn-primary" onclick="Cloud.manualSave();App.closeModal()" style="margin-top:0;flex:1;font-size:13px;padding:11px">⬆️ Salvar agora</button>
+          <button class="btn-secondary" onclick="Cloud.manualRestore()" style="margin-top:0;flex:1;font-size:13px;padding:11px">⬇️ Restaurar backup</button>
         </div>
+
+        <div style="font-size:11px;font-weight:700;letter-spacing:.5px;color:var(--muted);text-transform:uppercase;margin-bottom:8px">☁️ Google Drive</div>
         ${clientIdSet?`
           <div class="sync-option" onclick="App.gdriveAuth()">
             <div class="sync-icon-wrap" style="background:rgba(66,133,244,.1)">
@@ -1787,47 +1706,33 @@ const App = {
     if (!ta||!ta.value.trim()){this.showToast('Cole os dados primeiro','error');return;}
     try{this.importData(ta.value.trim());}catch(e){this.showToast('❌ Dados inválidos','error');}
   },
-  importData(jsonStr) {
-    const parsed=JSON.parse(jsonStr);
-    if (!parsed.tasks&&!parsed.history) throw new Error('Invalid');
-    // Merge tasks (union by id)
-    const existingIds=new Set(this.state.tasks.map(t=>t.id));
-    const newTasks=[...this.state.tasks];
-    (parsed.tasks||[]).forEach(t=>{if(!existingIds.has(t.id))newTasks.push(t);});
-    // Merge history
-    const mergedHistory={...this.state.history};
-    Object.entries(parsed.history||{}).forEach(([date,entries])=>{
-      mergedHistory[date]={...(mergedHistory[date]||{}),...entries};
-    });
-    this.state.tasks=newTasks; this.state.history=mergedHistory;
-    this.save();
-    localStorage.setItem('foco_last_sync',Date.now().toString());
-    this.closeModal(); this.render();
-    this.showToast('✅ Dados importados!','success');
-  },
-  getExportData() {
-    return {tasks:this.state.tasks,history:this.state.history,exportedAt:new Date().toISOString(),version:2};
-  },
-
-  // Importa silenciosamente (sem toast, sem fechar modal) — usado pelo Cloud sync
-  importDataSilent(jsonStr) {
+ importDataSilent(jsonStr) {
     try {
       const parsed = JSON.parse(jsonStr);
       if (!parsed.tasks && !parsed.history) return;
-      const existingIds = new Set(this.state.tasks.map(t => t.id));
-      const newTasks = [...this.state.tasks];
-      (parsed.tasks || []).forEach(t => { if (!existingIds.has(t.id)) newTasks.push(t); });
+
+      // Merge tasks com suporte a soft delete
+      const localTasksMap = new Map(this.state.tasks.map(t => [t.id, t]));
+      (parsed.tasks || []).forEach(cloudTask => {
+        if (!localTasksMap.has(cloudTask.id)) {
+          localTasksMap.set(cloudTask.id, cloudTask);
+        } else if (cloudTask.deleted) {
+          localTasksMap.get(cloudTask.id).deleted = true;
+        }
+      });
+      const newTasks = Array.from(localTasksMap.values());
+
       const mergedHistory = { ...this.state.history };
       Object.entries(parsed.history || {}).forEach(([date, entries]) => {
         mergedHistory[date] = { ...(mergedHistory[date] || {}), ...entries };
       });
+      
       this.state.tasks = newTasks;
       this.state.history = mergedHistory;
       if (parsed.theme && !this.state.theme) this.state.theme = parsed.theme;
       localStorage.setItem('foco_v2', JSON.stringify(this.state));
     } catch(e) { console.error('importDataSilent error:', e); }
   },
-
   // ===================== GOOGLE DRIVE =====================
   openGdriveSetup(){this.state.modal={type:'gdriveSetup'};this.render();},
   renderGdriveSetupModal() {
