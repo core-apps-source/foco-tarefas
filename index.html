@@ -394,7 +394,7 @@ const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 // =====================================================
 const Cloud = {
   _syncTimeout: null,
-  _status: 'idle', // idle | syncing | ok | error
+  _status: 'idle',
 
   async getUserId() {
     const { data: { session } } = await db.auth.getSession();
@@ -411,13 +411,14 @@ const Cloud = {
     else if (s === 'error') btn.classList.add('sync-err');
   },
 
-  // Salva dados no Supabase (upsert)
+  // Salva dados locais na nuvem (sempre sobrescreve com dados locais)
   async push() {
     const userId = await this.getUserId();
-    if (!userId) return;
+    if (!userId) { console.warn('Cloud.push: sem sessão'); return false; }
     this.setStatus('syncing');
     try {
       const payload = App.getExportData();
+      console.log('Cloud.push: enviando', payload.tasks?.length, 'tarefas');
       const { error } = await db.from('user_data').upsert({
         user_id: userId,
         data: payload,
@@ -426,52 +427,97 @@ const Cloud = {
       if (error) throw error;
       this.setStatus('ok');
       localStorage.setItem('foco_cloud_sync', Date.now().toString());
-    } catch(e) {
-      console.error('Cloud push error:', e);
-      this.setStatus('error');
-    }
-  },
-
-  // Carrega dados do Supabase
-  async pull() {
-    const userId = await this.getUserId();
-    if (!userId) return false;
-    this.setStatus('syncing');
-    try {
-      const { data, error } = await db.from('user_data')
-        .select('data, updated_at')
-        .eq('user_id', userId)
-        .single();
-      if (error && error.code !== 'PGRST116') throw error; // PGRST116 = no rows
-      if (!data) { this.setStatus('ok'); return false; }
-      // Mescla dados da nuvem com localStorage
-      App.importDataSilent(JSON.stringify(data.data));
-      this.setStatus('ok');
-      localStorage.setItem('foco_cloud_sync', Date.now().toString());
+      console.log('Cloud.push: sucesso');
       return true;
     } catch(e) {
-      console.error('Cloud pull error:', e);
+      console.error('Cloud.push erro:', e.message, e);
       this.setStatus('error');
       return false;
     }
   },
 
-  // Debounced push — evita salvar a cada keystroke
+  // Puxa dados da nuvem e MESCLA com local (local + nuvem, sem perder nada)
+  async pull() {
+    const userId = await this.getUserId();
+    if (!userId) { console.warn('Cloud.pull: sem sessão'); return false; }
+    this.setStatus('syncing');
+    try {
+      const { data, error } = await db.from('user_data')
+        .select('data, updated_at')
+        .eq('user_id', userId)
+        .maybeSingle(); // não lança erro se não encontrar linha
+      if (error) throw error;
+      if (!data || !data.data) {
+        console.log('Cloud.pull: nenhum dado na nuvem ainda');
+        this.setStatus('ok');
+        return false;
+      }
+      console.log('Cloud.pull: recebido', data.data.tasks?.length, 'tarefas da nuvem');
+      App.importDataSilent(JSON.stringify(data.data));
+      this.setStatus('ok');
+      localStorage.setItem('foco_cloud_sync', Date.now().toString());
+      return true;
+    } catch(e) {
+      console.error('Cloud.pull erro:', e.message, e);
+      this.setStatus('error');
+      return false;
+    }
+  },
+
+  // Sincronização bidirecional: puxa nuvem → mescla → envia resultado
+  async sync() {
+    const userId = await this.getUserId();
+    if (!userId) return false;
+    this.setStatus('syncing');
+    try {
+      // 1. Puxa o que está na nuvem
+      const { data, error } = await db.from('user_data')
+        .select('data, updated_at')
+        .eq('user_id', userId)
+        .maybeSingle();
+      if (error) throw error;
+
+      // 2. Mescla com dados locais (se houver algo na nuvem)
+      if (data?.data) {
+        console.log('Cloud.sync: mesclando nuvem (' + (data.data.tasks?.length||0) + ' tarefas) com local (' + (App.state.tasks?.length||0) + ' tarefas)');
+        App.importDataSilent(JSON.stringify(data.data));
+      }
+
+      // 3. Sobe o resultado mesclado de volta
+      const merged = App.getExportData();
+      const { error: pushErr } = await db.from('user_data').upsert({
+        user_id: userId,
+        data: merged,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'user_id' });
+      if (pushErr) throw pushErr;
+
+      this.setStatus('ok');
+      localStorage.setItem('foco_cloud_sync', Date.now().toString());
+      console.log('Cloud.sync: sucesso —', merged.tasks?.length, 'tarefas salvas');
+      return true;
+    } catch(e) {
+      console.error('Cloud.sync erro:', e.message, e);
+      this.setStatus('error');
+      return false;
+    }
+  },
+
+  // Debounced push após alterações locais
   schedulePush() {
     clearTimeout(this._syncTimeout);
     this._syncTimeout = setTimeout(() => this.push(), 1500);
   },
 
-  // Botão manual de refresh
+  // Botão manual ☁️ — faz sync bidirecional completo
   async manualRefresh() {
     App.showToast('☁️ Sincronizando…', '');
-    const pulled = await this.pull();
-    if (pulled) {
-      App.render();
-      App.showToast('✅ Dados atualizados!', 'success');
-    } else {
-      await this.push();
+    const ok = await this.sync();
+    App.render();
+    if (ok) {
       App.showToast('✅ Sincronizado!', 'success');
+    } else {
+      App.showToast('❌ Erro ao sincronizar — veja o console', 'error');
     }
   }
 };
@@ -497,8 +543,8 @@ const Auth = {
     document.getElementById('auth-screen').classList.add('hidden');
     document.getElementById('logout-btn').classList.add('visible');
     App.init();
-    // Carrega dados da nuvem ao entrar
-    setTimeout(() => Cloud.pull().then(pulled => { if (pulled) App.render(); }), 500);
+    // Sync bidirecional ao entrar: mescla local + nuvem e sobe o resultado
+    setTimeout(() => Cloud.sync().then(ok => { if (ok) App.render(); }), 500);
   },
 
   showLogin() {
@@ -1569,8 +1615,8 @@ const App = {
           </div>
         </div>
         <div style="display:flex;gap:8px;margin-bottom:16px">
-          <button class="btn-primary" onclick="Cloud.push().then(()=>App.showToast('✅ Salvo na nuvem!','success'))" style="margin-top:0;flex:1;font-size:13px;padding:11px">⬆️ Salvar agora</button>
-          <button class="btn-secondary" onclick="Cloud.pull().then(p=>{if(p){App.render();App.showToast('✅ Dados carregados!','success');}else App.showToast('Nada novo na nuvem','');})" style="margin-top:0;flex:1;font-size:13px;padding:11px">⬇️ Carregar nuvem</button>
+          <button class="btn-primary" onclick="Cloud.push().then(ok=>App.showToast(ok?'✅ Salvo na nuvem!':'❌ Erro ao salvar',ok?'success':'error'))" style="margin-top:0;flex:1;font-size:13px;padding:11px">⬆️ Salvar agora</button>
+          <button class="btn-secondary" onclick="Cloud.sync().then(ok=>{if(ok){App.render();App.showToast('✅ Sincronizado!','success');}else App.showToast('❌ Erro ao sincronizar','error');})" style="margin-top:0;flex:1;font-size:13px;padding:11px">🔄 Sincronizar</button>
         </div>
         ${clientIdSet?`
           <div class="sync-option" onclick="App.gdriveAuth()">
