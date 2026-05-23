@@ -390,12 +390,18 @@ const { createClient } = supabase;
 const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // =====================================================
-//  CLOUD SYNC (Supabase)
+// CLOUD SYNC — Supabase Realtime (fonte da verdade)
 // =====================================================
 const Cloud = {
   _syncTimeout: null,
   _status: 'idle',
+  _realtimeChannel: null,
+  _localMutex: false,        // impede push() enquanto aplicamos delta do Realtime
+  _lastPushHash: null,       // evita push redundante se dados não mudaram
 
+  // --------------------------------------------------
+  // Utilitários
+  // --------------------------------------------------
   async getUserId() {
     const { data: { session } } = await db.auth.getSession();
     return session?.user?.id || null;
@@ -405,139 +411,292 @@ const Cloud = {
     this._status = s;
     const btn = document.getElementById('cloud-sync-btn');
     if (!btn) return;
-    btn.classList.remove('syncing','sync-ok','sync-err');
+    btn.classList.remove('syncing', 'sync-ok', 'sync-err');
     if (s === 'syncing') btn.classList.add('syncing');
-    else if (s === 'ok') btn.classList.add('sync-ok');
+    else if (s === 'ok')    btn.classList.add('sync-ok');
     else if (s === 'error') btn.classList.add('sync-err');
   },
 
-  // Salva dados locais na nuvem (sempre sobrescreve com dados locais)
+  /** Hash leve para detectar se o payload mudou de verdade */
+  _hash(payload) {
+    return JSON.stringify(payload?.tasks?.map(t => t.id + t.updatedAt + t.done));
+  },
+
+  // --------------------------------------------------
+  // PUSH — envia estado local para a nuvem
+  // Só deve ser chamado após ação *local* do usuário.
+  // --------------------------------------------------
   async push() {
+    if (this._localMutex) {
+      // Estamos aplicando um delta remoto — não fazer push agora
+      console.log('Cloud.push: bloqueado por mutex (delta remoto em andamento)');
+      return false;
+    }
+
     const userId = await this.getUserId();
     if (!userId) { console.warn('Cloud.push: sem sessão'); return false; }
+
+    const payload = App.getExportData();
+    const hash = this._hash(payload);
+    if (hash === this._lastPushHash) {
+      console.log('Cloud.push: sem mudanças, ignorando');
+      return true;
+    }
+
     this.setStatus('syncing');
     try {
-      const payload = App.getExportData();
-      console.log('Cloud.push: enviando', payload.tasks?.length, 'tarefas');
-      const { error } = await db.from('user_data').upsert({
-        user_id: userId,
-        data: payload,
-        updated_at: new Date().toISOString()
-      }, { onConflict: 'user_id' });
+      const { error } = await db.from('user_data').upsert(
+        { user_id: userId, data: payload, updated_at: new Date().toISOString() },
+        { onConflict: 'user_id' }
+      );
       if (error) throw error;
+      this._lastPushHash = hash;
       this.setStatus('ok');
       localStorage.setItem('foco_cloud_sync', Date.now().toString());
-      console.log('Cloud.push: sucesso');
+      console.log('Cloud.push: sucesso —', payload.tasks?.length, 'tarefas');
       return true;
-    } catch(e) {
+    } catch (e) {
       console.error('Cloud.push erro:', e.message, e);
       this.setStatus('error');
       return false;
     }
   },
 
-  // Puxa dados da nuvem e MESCLA com local (local + nuvem, sem perder nada)
+  // --------------------------------------------------
+  // PULL — busca snapshot completo da nuvem (usado só
+  // na inicialização ou no refresh manual).
+  // --------------------------------------------------
   async pull() {
     const userId = await this.getUserId();
     if (!userId) { console.warn('Cloud.pull: sem sessão'); return false; }
+
     this.setStatus('syncing');
     try {
-      const { data, error } = await db.from('user_data')
+      const { data, error } = await db
+        .from('user_data')
         .select('data, updated_at')
         .eq('user_id', userId)
-        .maybeSingle(); // não lança erro se não encontrar linha
+        .maybeSingle();
+
       if (error) throw error;
-      if (!data || !data.data) {
+      if (!data?.data) {
         console.log('Cloud.pull: nenhum dado na nuvem ainda');
         this.setStatus('ok');
         return false;
       }
-      console.log('Cloud.pull: recebido', data.data.tasks?.length, 'tarefas da nuvem');
-      App.importDataSilent(JSON.stringify(data.data));
+
+      console.log('Cloud.pull: recebido', data.data.tasks?.length, 'tarefas');
+
+      // Aplica sem disparar push (mutex ligado)
+      this._localMutex = true;
+      try {
+        App.importDataSilent(JSON.stringify(data.data));
+        this._lastPushHash = this._hash(data.data);  // marca hash como sincronizado
+      } finally {
+        this._localMutex = false;
+      }
+
       this.setStatus('ok');
       localStorage.setItem('foco_cloud_sync', Date.now().toString());
       return true;
-    } catch(e) {
+    } catch (e) {
       console.error('Cloud.pull erro:', e.message, e);
       this.setStatus('error');
       return false;
     }
   },
 
-  // Sincronização bidirecional: puxa nuvem → mescla → envia resultado
+  // --------------------------------------------------
+  // SYNC inicial — pull + push do resultado mesclado.
+  // Chamado UMA VEZ ao carregar o app.
+  // --------------------------------------------------
   async sync() {
     const userId = await this.getUserId();
     if (!userId) return false;
+
     this.setStatus('syncing');
     try {
-      // 1. Puxa o que está na nuvem
-      const { data, error } = await db.from('user_data')
+      const { data, error } = await db
+        .from('user_data')
         .select('data, updated_at')
         .eq('user_id', userId)
         .maybeSingle();
+
       if (error) throw error;
 
-      // 2. Mescla com dados locais (se houver algo na nuvem)
       if (data?.data) {
-        console.log('Cloud.sync: mesclando nuvem (' + (data.data.tasks?.length||0) + ' tarefas) com local (' + (App.state.tasks?.length||0) + ' tarefas)');
-        App.importDataSilent(JSON.stringify(data.data));
+        console.log('Cloud.sync: mesclando nuvem (' + (data.data.tasks?.length || 0) +
+          ' tarefas) com local (' + (App.state.tasks?.length || 0) + ' tarefas)');
+
+        this._localMutex = true;
+        try {
+          App.importDataSilent(JSON.stringify(data.data));
+        } finally {
+          this._localMutex = false;
+        }
       }
 
-      // 3. Sobe o resultado mesclado de volta
+      // Sobe o estado mesclado
       const merged = App.getExportData();
-      const { error: pushErr } = await db.from('user_data').upsert({
-        user_id: userId,
-        data: merged,
-        updated_at: new Date().toISOString()
-      }, { onConflict: 'user_id' });
+      const { error: pushErr } = await db.from('user_data').upsert(
+        { user_id: userId, data: merged, updated_at: new Date().toISOString() },
+        { onConflict: 'user_id' }
+      );
       if (pushErr) throw pushErr;
 
+      this._lastPushHash = this._hash(merged);
       this.setStatus('ok');
       localStorage.setItem('foco_cloud_sync', Date.now().toString());
-      console.log('Cloud.sync: sucesso —', merged.tasks?.length, 'tarefas salvas');
+      console.log('Cloud.sync: sucesso —', merged.tasks?.length, 'tarefas');
       return true;
-    } catch(e) {
+    } catch (e) {
       console.error('Cloud.sync erro:', e.message, e);
       this.setStatus('error');
       return false;
     }
   },
 
-  // Debounced push após alterações locais
+  // --------------------------------------------------
+  // REALTIME — inscreve canal para receber deltas do
+  // Supabase em tempo real. Chamar após sync inicial.
+  // --------------------------------------------------
+  async subscribeRealtime() {
+    const userId = await this.getUserId();
+    if (!userId) return;
+
+    // Remove canal anterior se existir (ex: re-login)
+    if (this._realtimeChannel) {
+      await db.removeChannel(this._realtimeChannel);
+      this._realtimeChannel = null;
+    }
+
+    this._realtimeChannel = db
+      .channel(`user_data:${userId}`)          // canal único por usuário
+      .on(
+        'postgres_changes',
+        {
+          event: '*',                           // INSERT, UPDATE, DELETE
+          schema: 'public',
+          table: 'user_data',
+          filter: `user_id=eq.${userId}`,       // só mudanças do próprio usuário
+        },
+        (payload) => this._handleRealtimeEvent(payload)
+      )
+      .subscribe((status) => {
+        console.log('Realtime status:', status);
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ Realtime conectado para usuário', userId);
+        }
+      });
+  },
+
+  // --------------------------------------------------
+  // Handler de eventos Realtime
+  // --------------------------------------------------
+  _handleRealtimeEvent(payload) {
+    console.log('Realtime evento:', payload.eventType, payload);
+
+    // Se FOI ESTE app que gerou a mudança (mesmo hash), ignora para não fazer
+    // loop: nosso push → Realtime nos notifica → pullamos de volta desnecessariamente
+    if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
+      const remoteData = payload.new?.data;
+      if (!remoteData) return;
+
+      const remoteHash = this._hash(remoteData);
+      if (remoteHash === this._lastPushHash) {
+        console.log('Realtime: ignorando evento próprio (mesmo hash)');
+        return;
+      }
+
+      // Evento veio de OUTRO cliente — aplica sem fazer push
+      console.log('Realtime: aplicando dados remotos (', remoteData.tasks?.length, 'tarefas)');
+      this._localMutex = true;
+      try {
+        App.importDataSilent(JSON.stringify(remoteData));
+        this._lastPushHash = remoteHash;   // atualiza hash para o estado recebido
+        App.render();
+        this.setStatus('ok');
+        localStorage.setItem('foco_cloud_sync', Date.now().toString());
+      } finally {
+        this._localMutex = false;
+      }
+    }
+
+    if (payload.eventType === 'DELETE') {
+      // Linha deletada no banco (raro, mas tratado)
+      console.warn('Realtime: linha user_data deletada remotamente — limpando estado local');
+      this._localMutex = true;
+      try {
+        App.clearState?.();   // implemente App.clearState() se precisar
+        App.render();
+      } finally {
+        this._localMutex = false;
+      }
+    }
+  },
+
+  // --------------------------------------------------
+  // Debounced push — chamado após ações locais do usuário
+  // --------------------------------------------------
   schedulePush() {
+    if (this._localMutex) return;   // não agendar push durante aplicação de delta
     clearTimeout(this._syncTimeout);
     this._syncTimeout = setTimeout(() => this.push(), 1500);
   },
 
-  // Botão manual ☁️ — faz sync bidirecional completo
+  // --------------------------------------------------
+  // Botão manual — pull completo + re-render
+  // --------------------------------------------------
   async manualRefresh() {
     App.showToast('☁️ Sincronizando…', '');
-    const ok = await this.sync();
+    const ok = await this.pull();
     App.render();
     if (ok) {
       App.showToast('✅ Sincronizado!', 'success');
     } else {
       App.showToast('❌ Erro ao sincronizar — veja o console', 'error');
     }
-  }
-};
+  },
 
+  // --------------------------------------------------
+  // Desconecta Realtime (logout, cleanup)
+  // --------------------------------------------------
+  async unsubscribe() {
+    if (this._realtimeChannel) {
+      await db.removeChannel(this._realtimeChannel);
+      this._realtimeChannel = null;
+      console.log('Realtime: desconectado');
+    }
+  },
+};
 // =====================================================
 //  AUTH
 // =====================================================
 const Auth = {
   mode: 'login',
 
-  async init() {
-    const { data: { session } } = await db.auth.getSession();
-    if (session) {
+ async init() {
+  const { data: { session } } = await db.auth.getSession();
+  if (session) {
+    this.showApp();
+    await Cloud.sync();
+    await Cloud.subscribeRealtime();
+    App.render();
+  }
+
+  db.auth.onAuthStateChange(async (event, session) => {
+    if (event === 'SIGNED_IN' && session) {
       this.showApp();
+      await Cloud.sync();
+      await Cloud.subscribeRealtime();
+      App.render();
     }
-    db.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' && session) this.showApp();
-      if (event === 'SIGNED_OUT') this.showLogin();
-    });
-  },
+    if (event === 'SIGNED_OUT') {
+      await Cloud.unsubscribe();
+      this.showLogin();
+    }
+  });
+},
 
   showApp() {
     document.getElementById('auth-screen').classList.add('hidden');
