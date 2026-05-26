@@ -691,6 +691,11 @@ const App = {
   applyTheme() {
     const t = (this.state && THEMES[this.state.theme]) ? this.state.theme : 'rosa';
     document.documentElement.setAttribute('data-theme', t);
+    const accentMap = { rosa:'#ff6bb3', laranja:'#ff9f43', azul:'#3b82f6', vermelho:'#ef4444', lilas:'#c084fc' };
+    const color = accentMap[t] || '#ff6bb3';
+    let meta = document.querySelector('meta[name="theme-color"]');
+    if (!meta) { meta = document.createElement('meta'); meta.name = 'theme-color'; document.head.appendChild(meta); }
+    meta.content = color;
   },
 
   setTheme(id) {
