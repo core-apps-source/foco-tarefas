@@ -3,6 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<!-- PWA: iOS -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Foco">
+<!-- PWA: Android / Chrome -->
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#ff6bb3">
+<!-- Manifest injetado dinamicamente via JS abaixo -->
+<link rel="manifest" id="pwa-manifest">
 <title>Foco — Tarefas</title>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
@@ -128,7 +137,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);display:flex
 .manage-task-name{font-size:14px;font-weight:600;}
 .manage-task-meta{font-size:12px;color:var(--muted);margin-top:2px;}
 .manage-actions{display:flex;gap:6px;}
-.manage-btn{width:32px;height:32px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;transition:all .15s;}
+.manage-btn{width:32px;height:32px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;transition:all .15s;font-family:var(--font);}
 .manage-btn.del:hover{background:rgba(255,107,107,.15);border-color:var(--red);}
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);z-index:50;display:flex;align-items:flex-end;justify-content:center;animation:fadeIn .15s;}
 .overlay.center{align-items:center;}
@@ -409,7 +418,7 @@ const Cloud = {
     if (!userId) { console.warn('Cloud.push: sem sessão'); return false; }
     this.setStatus('syncing');
     try {
-      const payload = App.state;
+      const payload = App.getExportData();
       const { error } = await db.from('user_data').upsert(
         { user_id: userId, data: payload, updated_at: new Date().toISOString() },
         { onConflict: 'user_id' }
@@ -677,7 +686,7 @@ const App = {
     } catch(e) { this.state = this.defaultState(); }
   },
 
-  save() { localStorage.setItem('foco_v2', JSON.stringify(this.state)); },
+  save() { localStorage.setItem('foco_v2', JSON.stringify(this.state)); if (typeof Cloud !== 'undefined' && Cloud.schedulePush) Cloud.schedulePush(); },
 
   applyTheme() {
     const t = (this.state && THEMES[this.state.theme]) ? this.state.theme : 'rosa';
@@ -741,15 +750,25 @@ const App = {
   getTaskGoalForDay(task, date) {
     if (task.type!=='goal') return 0;
     const idx = this.daysDiff(task.startDate,date);
-    if (idx<0||idx>=task.dailyGoals.length) return 0;
-    // Calcula progresso real acumulado antes de hoje para descontar overflow
-    let actualBefore=0;
-    for(let i=0;i<idx;i++){
-      const d2=this.addDays(task.startDate,i);
-      actualBefore+=(this.getTaskDayData(task.id,d2).progress||0);
+    if (idx<0) return 0;
+    if (idx<task.dailyGoals.length) {
+      // ── Dia normal dentro do prazo ──
+      let actualBefore=0;
+      for(let i=0;i<idx;i++){
+        const d2=this.addDays(task.startDate,i);
+        actualBefore+=(this.getTaskDayData(task.id,d2).progress||0);
+      }
+      const plannedEnd=task.dailyGoals.slice(0,idx+1).reduce((a,b)=>a+b,0);
+      return Math.max(0, plannedEnd - actualBefore);
     }
-    const plannedEnd=task.dailyGoals.slice(0,idx+1).reduce((a,b)=>a+b,0);
-    return Math.max(0, plannedEnd - actualBefore);
+    // ── ROLLOVER: prazo expirou — retorna todo o saldo pendente ──
+    const totalPlanned=task.dailyGoals.reduce((a,b)=>a+b,0);
+    let totalDone=0;
+    for(let i=0;i<task.dailyGoals.length;i++){
+      const d2=this.addDays(task.startDate,i);
+      totalDone+=(this.getTaskDayData(task.id,d2).progress||0);
+    }
+    return Math.max(0, totalPlanned-totalDone);
   },
   getWordsGoalForDay(task, date){
     if(!task.wordsDailyGoals||!task.wordsDailyGoals.length)return 0;
@@ -813,11 +832,22 @@ const App = {
       .filter(r=>r.score>0)
       .sort((a,b)=>b.score-a.score);
   },
- isTaskActiveOnDate(task, date) {
+  isTaskActiveOnDate(task, date) {
     if (!task.active || task.deleted) return false;
     if (task.type==='goal') {
       const idx=this.daysDiff(task.startDate,date);
-      return idx>=0&&idx<task.dailyGoals.length;
+      if (idx<0) return false;
+      if (idx<task.dailyGoals.length) return true;
+      // ── ROLLOVER: prazo expirou mas ainda há saldo pendente ──
+      // Exibe por até 60 dias após o prazo para recuperar atrasos
+      if (idx-task.dailyGoals.length>=60) return false;
+      const totalPlanned=task.dailyGoals.reduce((a,b)=>a+b,0);
+      let totalDone=0;
+      for(let i=0;i<task.dailyGoals.length;i++){
+        const d2=this.addDays(task.startDate,i);
+        totalDone+=(this.getTaskDayData(task.id,d2).progress||0);
+      }
+      return totalDone<totalPlanned;
     }
     if (task.daysOfWeek) {
       const [y,m,d]=date.split('-').map(Number);
@@ -1353,6 +1383,7 @@ const App = {
             <span class="chip ${isFull?'green':'orange'}">Dia ${idx+1}/${task.dailyGoals.length}</span>
             ${task.schedule==='fixed'?`<span class="task-time-badge">⏰ ${task.scheduledTime}</span>`:`<span class="task-time-badge">🔄 Flexível</span>`}
             ${task.goalUnit!=='min'?`<span class="task-time-badge" style="background:var(--surface3)">${rangeLabel} ${task.goalUnit}</span>`:''}
+            ${idx>=task.dailyGoals.length?`<span class="task-time-badge late">⚠️ Atrasado</span>`:''}
             ${medalBadge}${ftBadge}${timeSpentBadge}
           </div>
           <div class="goal-bar-wrap">
@@ -1365,7 +1396,7 @@ const App = {
           <div class="tap-hint">ℹ️ Ver datas, calendário e atrasos</div>
         </div>
         <div class="task-right">
-          ${!isFull?`<button class="log-btn" onclick="App.openLogProgress('${task.id}')">+ Registrar</button>`:`<button class="revert-btn" onclick="event.stopPropagation();App.revertTask('${task.id}','${date}')">↩ Reverter</button>`}
+          ${!isFull?`<button class="log-btn" onclick="event.stopPropagation();App.openLogProgress('${task.id}')">+ Registrar</button>`:`<button class="revert-btn" onclick="event.stopPropagation();App.revertTask('${task.id}','${date}')">↩ Reverter</button>`}
         </div>
       </div>`;
     }
@@ -1574,16 +1605,20 @@ renderManage() {
       <div style="font-size:22px">${task.type==='goal'?'🎯':'✅'}</div>
       <div class="manage-task-info"><div class="manage-task-name">${task.name}</div><div class="manage-task-meta">${meta}</div></div>
       <div class="manage-actions">
-        <div class="manage-btn" onclick="App.openEditTask('${task.id}')">✏️</div>
-        <div class="manage-btn del" onclick="App.deleteTask('${task.id}')">🗑️</div>
+        <button class="manage-btn" onclick="App.openEditTask('${task.id}')">✏️</button>
+        <button class="manage-btn del" onclick="App.deleteTask('${task.id}')">🗑️</button>
       </div>
     </div>`;
   },
- deleteTask(taskId) {
+  deleteTask(taskId) {
     if (!confirm('Remover esta tarefa?')) return;
     const task = this.state.tasks.find(t => t.id === taskId);
     if (task) task.deleted = true;
-    this.save(); this.render();
+    this.save();
+    // Push imediato para outros dispositivos receberem a deleção via Realtime
+    clearTimeout(Cloud._syncTimeout);
+    Cloud.push();
+    this.render();
   },
 
   // ===================== SYNC =====================
@@ -1600,12 +1635,6 @@ renderManage() {
         <div class="modal-sub" style="margin-bottom:16px">
           Exporte ou importe para sincronizar entre dispositivos.
           ${lastSyncLabel?`<br><span style="color:var(--green);font-size:12px">✓ Último backup: ${lastSyncLabel}</span>`:''}
-        </div>
-
-        <div style="font-size:11px;font-weight:700;letter-spacing:.5px;color:var(--muted);text-transform:uppercase;margin-bottom:8px">☁️ Supabase</div>
-        <div style="display:flex;gap:8px;margin-bottom:16px">
-          <button class="btn-primary" onclick="Cloud.manualSave();App.closeModal()" style="margin-top:0;flex:1;font-size:13px;padding:11px">⬆️ Salvar agora</button>
-          <button class="btn-secondary" onclick="Cloud.manualRestore()" style="margin-top:0;flex:1;font-size:13px;padding:11px">⬇️ Restaurar backup</button>
         </div>
 
         <div style="font-size:11px;font-weight:700;letter-spacing:.5px;color:var(--muted);text-transform:uppercase;margin-bottom:8px">☁️ Google Drive</div>
@@ -3027,6 +3056,156 @@ renderManage() {
 };
 
 
+// =====================================================
+//  PWA SETUP — Manifest + Service Worker (inline)
+//  Injeta manifest e SW dinamicamente para funcionar
+//  como arquivo único sem servidor extra.
+//  No iOS: abre em standalone ao salvar na tela inicial.
+//  No Android: dispara prompt de instalação nativo.
+// =====================================================
+(async function setupPWA() {
+  // ── Gera ícone via Canvas ──────────────────────────
+  function makeIcon(size) {
+    const c = document.createElement('canvas');
+    c.width = c.height = size;
+    const ctx = c.getContext('2d');
+    const r = size * 0.18;
+    // Fundo escuro
+    ctx.fillStyle = '#0b0b14';
+    ctx.fillRect(0, 0, size, size);
+    // Quadrado arredondado rosa
+    ctx.fillStyle = '#ff6bb3';
+    ctx.beginPath();
+    ctx.moveTo(r, 0); ctx.lineTo(size - r, 0);
+    ctx.quadraticCurveTo(size, 0, size, r);
+    ctx.lineTo(size, size - r);
+    ctx.quadraticCurveTo(size, size, size - r, size);
+    ctx.lineTo(r, size);
+    ctx.quadraticCurveTo(0, size, 0, size - r);
+    ctx.lineTo(0, r);
+    ctx.quadraticCurveTo(0, 0, r, 0);
+    ctx.closePath();
+    ctx.fill();
+    // Emoji 🎯
+    ctx.font = `${Math.round(size * 0.52)}px serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('\u{1F3AF}', size / 2, size * 0.54);
+    return c.toDataURL('image/png');
+  }
+
+  const icon192 = makeIcon(192);
+  const icon512 = makeIcon(512);
+
+  // ── Injeta apple-touch-icon ────────────────────────
+  const touchIcon = document.createElement('link');
+  touchIcon.rel = 'apple-touch-icon';
+  touchIcon.href = icon192;
+  document.head.appendChild(touchIcon);
+
+  // ── Manifest como Blob URL ─────────────────────────
+  const manifest = {
+    name: 'Foco — Tarefas',
+    short_name: 'Foco',
+    description: 'Seu app de metas e hábitos diários',
+    start_url: './',
+    display: 'standalone',
+    orientation: 'portrait',
+    background_color: '#0b0b14',
+    theme_color: '#ff6bb3',
+    icons: [
+      { src: icon192, sizes: '192x192', type: 'image/png' },
+      { src: icon512, sizes: '512x512', type: 'image/png', purpose: 'any maskable' }
+    ]
+  };
+  const mBlob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+  document.getElementById('pwa-manifest').href = URL.createObjectURL(mBlob);
+
+  // ── Service Worker como Blob URL ───────────────────
+  if (!('serviceWorker' in navigator)) return;
+  const swCode = `
+    const CACHE_NAME = 'foco-v2';
+    const SHELL_URL  = self.location.href;
+
+    self.addEventListener('install', e => {
+      self.skipWaiting();
+      e.waitUntil(
+        caches.open(CACHE_NAME).then(cache =>
+          fetch(SHELL_URL).then(r => cache.put(SHELL_URL, r)).catch(() => {})
+        )
+      );
+    });
+
+    self.addEventListener('activate', e => {
+      e.waitUntil(
+        caches.keys().then(keys =>
+          Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
+        ).then(() => clients.claim())
+      );
+    });
+
+    self.addEventListener('fetch', e => {
+      // Só intercepta a própria página — o resto vai direto à rede
+      if (e.request.mode === 'navigate') {
+        e.respondWith(
+          fetch(e.request).catch(() => caches.match(SHELL_URL))
+        );
+      }
+    });
+
+    // Escuta mensagem para atualizar o cache
+    self.addEventListener('message', e => {
+      if (e.data === 'SKIP_WAITING') self.skipWaiting();
+    });
+  `;
+  const swBlob = new Blob([swCode], { type: 'application/javascript' });
+  const swURL  = URL.createObjectURL(swBlob);
+  try {
+    const reg = await navigator.serviceWorker.register(swURL, { type: 'classic' });
+    console.log('[PWA] Service Worker registrado:', reg.scope);
+
+    // ── Prompt de instalação (Android / Chrome) ──────
+    let deferredPrompt = null;
+    window.addEventListener('beforeinstallprompt', e => {
+      e.preventDefault();
+      deferredPrompt = e;
+      // Exibe botão de instalação no header após 3 s
+      setTimeout(() => {
+        if (!deferredPrompt) return;
+        const btn = document.createElement('button');
+        btn.id = 'install-pwa-btn';
+        btn.title = 'Instalar app';
+        btn.style.cssText = [
+          'position:fixed','bottom:90px','right:16px','z-index:999',
+          'background:#ff6bb3','color:#fff','border:none','border-radius:14px',
+          'padding:10px 18px','font-family:Outfit,sans-serif','font-size:13px',
+          'font-weight:700','cursor:pointer','box-shadow:0 4px 20px rgba(255,107,179,.45)',
+          'display:flex','align-items:center','gap:8px','animation:toastIn .3s ease'
+        ].join(';');
+        btn.innerHTML = '📲 Instalar app';
+        btn.onclick = async () => {
+          deferredPrompt.prompt();
+          const { outcome } = await deferredPrompt.userChoice;
+          console.log('[PWA] Instalação:', outcome);
+          deferredPrompt = null;
+          btn.remove();
+        };
+        document.body.appendChild(btn);
+        // Remove após 10 s se não clicar
+        setTimeout(() => btn.remove(), 10000);
+      }, 3000);
+    });
+
+    window.addEventListener('appinstalled', () => {
+      console.log('[PWA] App instalado com sucesso!');
+      const btn = document.getElementById('install-pwa-btn');
+      if (btn) btn.remove();
+    });
+
+  } catch(e) {
+    console.warn('[PWA] SW não registrado:', e.message);
+  }
+})();
 
 </script>
 </body>
