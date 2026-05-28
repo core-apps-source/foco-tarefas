@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
 <title>Foco — Tarefas</title>
 <link rel="icon" type="image/png" href="./learning.png">
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#ff6bb3">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -657,7 +661,14 @@ const Auth = {
   },
 };
 
-document.addEventListener('DOMContentLoaded', () => Auth.init());
+document.addEventListener('DOMContentLoaded', () => {
+  Auth.init();
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js')
+      .then(reg => console.log('Service Worker registrado com sucesso!', reg))
+      .catch(err => console.warn('Erro ao registrar Service Worker:', err));
+  }
+});
 
 const GDRIVE_FILENAME = 'foco-backup.foco';
 const GDRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
