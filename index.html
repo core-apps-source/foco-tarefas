@@ -1161,6 +1161,7 @@ const App = {
           <p>${isToday ? dateLabel : dateLabel + (isFuture?' · prévia':' · histórico')}</p>
         </div>
         <div class="header-btns">
+          ${isToday ? `<div class="header-btn" onclick="App.triggerBacklogCheckManual()" title="Gerenciar Atrasos" style="font-size:16px">⚡</div>` : ''}
           ${this.getMissedInsights().length>0 && isToday ? `<div class="header-btn" onclick="App.openInsights()">💡</div>` : ''}
           ${!isToday ? `<div class="header-btn" onclick="App.goToToday()" title="Ir para hoje" style="font-size:13px;font-weight:700;color:var(--accent)">Hoje</div>` : ''}
         </div>
@@ -1953,7 +1954,7 @@ renderManage() {
     const m=this.state.modal; if (!m) return '';
     return {recalculate:()=>this.renderRecalculateModal(),addTask:()=>this.renderAddTaskModal(),logProgress:()=>this.renderLogProgressModal(),logWords:()=>this.renderLogWordsModal(),defineConversion:()=>this.renderDefineConversionModal(),suggestion:()=>this.renderSuggestionModal(),missedTask:()=>this.renderMissedTaskModal(),insights:()=>this.renderInsightsModal(),sync:()=>this.renderSyncModal(),pasteImport:()=>this.renderPasteImportModal(),gdriveSetup:()=>this.renderGdriveSetupModal(),finishTime:()=>this.renderFinishTimeModal(),taskDetail:()=>this.renderTaskDetailModal(),medalDetail:()=>this.renderMedalDetailModal()}[m.type]?.()??'';
   },
-  closeModal(){this.state.modal=null;this.state.wizard=null;this.render();},
+  closeModal(){this.state.modal=null;this.state.wizard=null;this.checkRecalculateBacklog();this.render();},
 
   // ===================== FINISH TIME MODAL =====================
   renderFinishTimeModal() {
@@ -3017,6 +3018,28 @@ renderManage() {
     });
   },
 
+  applyAutoRecalculateBackground(taskId, yesterday, backlog) {
+    const task = this.state.tasks.find(t => t.id === taskId);
+    if (!task) return;
+    const yesterdayIdx = this.daysDiff(task.startDate, yesterday);
+    const today = this.getToday();
+    const todayIdx = this.daysDiff(task.startDate, today);
+    if (yesterdayIdx >= 0 && yesterdayIdx < task.dailyGoals.length) {
+      const yesterdayGoal = task.dailyGoals[yesterdayIdx];
+      const yesterdayProgress = this.getTaskDayData(task.id, yesterday).progress || 0;
+      this.setTaskDayData(task.id, yesterday, { 
+        originalGoal: yesterdayGoal, 
+        preRecalcGoals: [...task.dailyGoals] 
+      });
+      task.dailyGoals[yesterdayIdx] = yesterdayProgress;
+      if (todayIdx >= 0 && todayIdx < task.dailyGoals.length) {
+        task.dailyGoals[todayIdx] += backlog;
+      }
+      localStorage.setItem(`foco_recalc_${task.id}_${yesterday}`, '1');
+      this.save();
+    }
+  },
+
   checkRecalculateBacklog() {
     const today = this.getToday();
     const yesterday = this.addDays(today, -1);
@@ -3035,20 +3058,64 @@ renderManage() {
           if (yesterdayProgress < yesterdayGoal) {
             const key = `foco_recalc_${task.id}_${yesterday}`;
             if (!localStorage.getItem(key)) {
-              if (!this.state.modal) {
-                this.state.modal = {
-                  type: 'recalculate',
-                  taskId: task.id,
-                  yesterday: yesterday,
-                  yesterdayIdx: yesterdayIdx,
-                  backlog: yesterdayGoal - yesterdayProgress
-                };
-              }
+              // Silently auto-recalculate in background!
+              this.applyAutoRecalculateBackground(task.id, yesterday, yesterdayGoal - yesterdayProgress);
             }
           }
         }
       }
     });
+  },
+
+  triggerBacklogCheckManual() {
+    const today = this.getToday();
+    const yesterday = this.addDays(today, -1);
+    let foundTask = null;
+    let foundBacklog = 0;
+    let yesterdayIdx = -1;
+
+    for (let task of this.state.tasks) {
+      if (task.type !== 'goal' || task.deleted || !task.active) continue;
+      const idx = this.daysDiff(task.startDate, yesterday);
+      if (idx >= 0 && idx < task.dailyGoals.length) {
+        const d = this.getTaskDayData(task.id, yesterday);
+        if (d.originalGoal !== undefined && d.preRecalcGoals) {
+          // Revert temporarily in memory to allow manual reconfiguration
+          task.dailyGoals = [...d.preRecalcGoals];
+          const origGoal = d.originalGoal;
+          const prog = d.progress || 0;
+          foundTask = task;
+          foundBacklog = origGoal - prog;
+          yesterdayIdx = idx;
+          localStorage.removeItem(`foco_recalc_${task.id}_${yesterday}`);
+          delete d.originalGoal;
+          delete d.preRecalcGoals;
+          break;
+        } else {
+          const prog = d.progress || 0;
+          const goal = task.dailyGoals[idx];
+          if (prog < goal) {
+            foundTask = task;
+            foundBacklog = goal - prog;
+            yesterdayIdx = idx;
+            break;
+          }
+        }
+      }
+    }
+
+    if (foundTask && foundBacklog > 0) {
+      this.state.modal = {
+        type: 'recalculate',
+        taskId: foundTask.id,
+        yesterday: yesterday,
+        yesterdayIdx: yesterdayIdx,
+        backlog: foundBacklog
+      };
+      this.render();
+    } else {
+      this.showToast('✅ Nenhuma tarefa atrasada!', 'info');
+    }
   },
 
   applyAutoRecalculate(taskId, yesterday, backlog) {
