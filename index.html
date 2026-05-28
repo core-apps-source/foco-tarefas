@@ -335,9 +335,19 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);display:flex
 .auth-divider{display:flex;align-items:center;gap:10px;margin:16px 0 0;}
 .auth-divider::before,.auth-divider::after{content:'';flex:1;height:1px;background:var(--border);}
 .auth-divider span{font-size:11px;color:var(--muted);font-weight:600;}
-.auth-logout-btn{position:fixed;top:16px;right:16px;z-index:40;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:7px 12px;font-family:var(--font);font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;transition:all .15s;display:none;}
+.auth-logout-btn{position:fixed;top:16px;right:16px;z-index:1001;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:7px 12px;font-family:var(--font);font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;transition:all .15s;display:none;}
 .auth-logout-btn:hover{color:var(--text);background:var(--surface3);}
 .auth-logout-btn.visible{display:block;}
+
+.task-card.overdue-card {
+  border: 2px solid var(--red) !important;
+  box-shadow: 0 0 12px rgba(255, 107, 107, 0.25) !important;
+  animation: pulseOverdue 2s infinite ease-in-out;
+}
+@keyframes pulseOverdue {
+  0%, 100% { box-shadow: 0 0 8px rgba(255, 107, 107, 0.25); }
+  50% { box-shadow: 0 0 16px rgba(255, 107, 107, 0.5); }
+}
 
 </style>
 </head>
@@ -641,7 +651,10 @@ const Auth = {
   },
 
   async logout() {
-    // 1. Atualizar UI de forma imediata e sem travar
+    // 1. Fechar modais e atualizar UI de forma imediata
+    if (typeof App !== 'undefined' && App.closeModal) {
+      App.closeModal();
+    }
     this.showLogin();
     
     // 2. Executar signOut e unsubscribe em background de forma segura
@@ -770,8 +783,22 @@ const App = {
   },
   getTaskGoalForDay(task, date) {
     if (task.type!=='goal') return 0;
+    
+    // Retorna o goal original se houver registro no histórico para manter integridade das medalhas passadas
+    const hist = this.getTaskDayData(task.id, date);
+    if (hist && hist.originalGoal !== undefined) return hist.originalGoal;
+
     const idx = this.daysDiff(task.startDate,date);
-    if (idx<0||idx>=task.dailyGoals.length) return 0;
+    if (idx<0) return 0;
+    if (idx>=task.dailyGoals.length) {
+      let totalDone=0;
+      for(let i=0;i<task.dailyGoals.length;i++){
+        const d2=this.addDays(task.startDate,i);
+        totalDone+=(this.getTaskDayData(task.id,d2).progress||0);
+      }
+      const totalGoal=task.dailyGoals.reduce((a,b)=>a+b,0);
+      return Math.max(0, totalGoal - totalDone);
+    }
     // Calcula progresso real acumulado antes de hoje para descontar overflow
     let actualBefore=0;
     for(let i=0;i<idx;i++){
@@ -843,8 +870,29 @@ const App = {
       .filter(r=>r.score>0)
       .sort((a,b)=>b.score-a.score);
   },
- isTaskActiveOnDate(task, date) {
+  isTaskOverdue(task, date) {
     if (!task.active || task.deleted) return false;
+    if (task.type === 'goal') {
+      const totalDays = task.dailyGoals.length;
+      const endDate = this.addDays(task.startDate, totalDays - 1);
+      if (date > endDate) {
+        let totalDone = 0;
+        for (let i = 0; i < totalDays; i++) {
+          const d = this.addDays(task.startDate, i);
+          totalDone += (this.getTaskDayData(task.id, d).progress || 0);
+        }
+        const totalGoal = task.dailyGoals.reduce((a, b) => a + b, 0);
+        return totalDone < totalGoal;
+      }
+    }
+    return false;
+  },
+  isTaskActiveOnDate(task, date) {
+    if (!task.active || task.deleted) return false;
+    if (task.type === 'goal' && date === this.getToday()) {
+      if (this.isTaskOverdue(task, date)) return true;
+    }
+    if (task.startDate && date < task.startDate) return false;
     if (task.type==='goal') {
       const idx=this.daysDiff(task.startDate,date);
       return idx>=0&&idx<task.dailyGoals.length;
@@ -1324,7 +1372,7 @@ const App = {
           <div class="tap-hint">ℹ️ Ver detalhes e histórico</div>
         </div>
         <div class="task-right">
-          ${checked?`<button class="revert-btn" onclick="event.stopPropagation();App.revertTask('${task.id}','${date}')">↩ Reverter</button>`:hasWords?`<button class="log-btn" onclick="event.stopPropagation();App.openLogWords('${task.id}')">+ Palavras</button>`:''}
+          ${checked?`<button class="revert-btn" onclick="event.stopPropagation();App.revertTask('${task.id}','${date}')">↩ Reverter</button>`:hasWords?`<button class="log-btn" onclick="event.stopPropagation();App.openLogWords('${task.id}','${date}')">+ Palavras</button>`:''}
         </div>
       </div>`;
     } else {
@@ -1375,12 +1423,15 @@ const App = {
       const barToggle=hasChapters?` onclick="event.stopPropagation();App.toggleBarMode('${task.id}')" style="cursor:pointer;user-select:none" title="Clique para alternar"`:'';
       const medal=this.getMedal(progress,goal);
       const medalBadge=medal?`<span class="medal-badge ${medal.cls}">${medal.icon} ${medal.label}</span>`:'';
+      const isOverdue=this.isTaskOverdue(task,date);
+      const overdueClass=isOverdue?'overdue-card':'';
+      const overdueBadge=isOverdue?`<span class="chip red" style="background:var(--red);color:#fff;font-weight:bold;box-shadow:0 0 6px rgba(255,107,107,0.4)">⚠️ Em Atraso</span>`:'';
 
-      return `<div class="task-card goal-card ${isFull?'done':''}">
+      return `<div class="task-card goal-card ${isFull?'done':''} ${overdueClass}">
         <div class="task-body" onclick="App.openTaskDetail('${task.id}')" style="cursor:pointer">
           <div class="task-name">${task.name}</div>
           <div class="task-sub">
-            <span class="chip ${isFull?'green':'orange'}">Dia ${idx+1}/${task.dailyGoals.length}</span>
+            ${isOverdue?overdueBadge:`<span class="chip ${isFull?'green':'orange'}">Dia ${idx+1}/${task.dailyGoals.length}</span>`}
             ${task.schedule==='fixed'?`<span class="task-time-badge">⏰ ${task.scheduledTime}</span>`:`<span class="task-time-badge">🔄 Flexível</span>`}
             ${task.goalUnit!=='min'?`<span class="task-time-badge" style="background:var(--surface3)">${rangeLabel} ${task.goalUnit}</span>`:''}
             ${medalBadge}${ftBadge}${timeSpentBadge}
@@ -1395,7 +1446,8 @@ const App = {
           <div class="tap-hint">ℹ️ Ver datas, calendário e atrasos</div>
         </div>
         <div class="task-right">
-          ${!isFull?`<button class="log-btn" onclick="App.openLogProgress('${task.id}')">+ Registrar</button>`:`<button class="revert-btn" onclick="event.stopPropagation();App.revertTask('${task.id}','${date}')">↩ Reverter</button>`}
+          ${!isFull?`<button class="log-btn" onclick="App.openLogProgress('${task.id}','${date}')">+ Registrar</button>`:''}
+          ${(isFull || progress > 0 || data.originalGoal !== undefined)?`<button class="revert-btn" onclick="event.stopPropagation();App.revertTask('${task.id}','${date}')">↩ Reverter</button>`:''}
         </div>
       </div>`;
     }
@@ -1416,6 +1468,14 @@ const App = {
 
   revertTask(taskId,date) {
     const task = this.state.tasks.find(t=>t.id===taskId);
+    if (!task) return;
+    const d = this.getTaskDayData(taskId,date);
+
+    if (d.preRecalcGoals) {
+      task.dailyGoals = [...d.preRecalcGoals];
+      localStorage.removeItem(`foco_recalc_${task.id}_${date}`);
+    }
+
     const reset = {
       completed: false,
       completedAt: null,
@@ -1423,13 +1483,15 @@ const App = {
       progress: 0,
       wordsProgress: 0,
       altProgress: null,
-      timeSpent: null,
+      timeSpent: null
     };
     this.setTaskDayData(taskId,date,reset);
-    // Debug: log state after revert to diagnose pct mismatch
-    const d = this.getTaskDayData(taskId,date);
-    const goalFrac = task && task.type==='goal' ? this.getGoalCompletionFraction(task,date) : (d.completed?1:0);
-    console.log('revertTask ->', {taskId,date,data:d,goalFrac, dailyPct:this.getDailyCompletion(date)});
+
+    if (this.state.history[date] && this.state.history[date][taskId]) {
+      delete this.state.history[date][taskId].originalGoal;
+      delete this.state.history[date][taskId].preRecalcGoals;
+    }
+
     // Ensure any modal (finishTime, etc.) is closed when reverting
     this.state.modal = null;
     this.state.wizard = null;
@@ -1889,7 +1951,7 @@ renderManage() {
   // ===================== MODALS =====================
   renderModal() {
     const m=this.state.modal; if (!m) return '';
-    return {addTask:()=>this.renderAddTaskModal(),logProgress:()=>this.renderLogProgressModal(),logWords:()=>this.renderLogWordsModal(),defineConversion:()=>this.renderDefineConversionModal(),suggestion:()=>this.renderSuggestionModal(),missedTask:()=>this.renderMissedTaskModal(),insights:()=>this.renderInsightsModal(),sync:()=>this.renderSyncModal(),pasteImport:()=>this.renderPasteImportModal(),gdriveSetup:()=>this.renderGdriveSetupModal(),finishTime:()=>this.renderFinishTimeModal(),taskDetail:()=>this.renderTaskDetailModal(),medalDetail:()=>this.renderMedalDetailModal()}[m.type]?.()??'';
+    return {recalculate:()=>this.renderRecalculateModal(),addTask:()=>this.renderAddTaskModal(),logProgress:()=>this.renderLogProgressModal(),logWords:()=>this.renderLogWordsModal(),defineConversion:()=>this.renderDefineConversionModal(),suggestion:()=>this.renderSuggestionModal(),missedTask:()=>this.renderMissedTaskModal(),insights:()=>this.renderInsightsModal(),sync:()=>this.renderSyncModal(),pasteImport:()=>this.renderPasteImportModal(),gdriveSetup:()=>this.renderGdriveSetupModal(),finishTime:()=>this.renderFinishTimeModal(),taskDetail:()=>this.renderTaskDetailModal(),medalDetail:()=>this.renderMedalDetailModal()}[m.type]?.()??'';
   },
   closeModal(){this.state.modal=null;this.state.wizard=null;this.render();},
 
@@ -1950,12 +2012,12 @@ renderManage() {
 
   // ===================== ADD/EDIT WIZARD =====================
   openAddTask() {
-    this.state.wizard={step:1,name:'',type:'simple',goalUnit:'páginas',totalGoal:'',totalPages:0,startOffset:0,daysToComplete:'',distribution:'equal',dailyGoals:[],schedule:'flexible',scheduledTime:'08:00',daysOfWeek:[0,1,2,3,4,5,6],dailyMinutes:'',wordsEnabled:false,wordsTotal:'',wordsOffset:0,wordsDays:'',wordsDistribution:'equal',wordsDailyGoals:[]};
+    this.state.wizard={step:1,name:'',type:'simple',goalUnit:'páginas',totalGoal:'',totalPages:0,startOffset:0,daysToComplete:'',distribution:'equal',dailyGoals:[],schedule:'flexible',scheduledTime:'08:00',daysOfWeek:[0,1,2,3,4,5,6],dailyMinutes:'',wordsEnabled:false,wordsTotal:'',wordsOffset:0,wordsDays:'',wordsDistribution:'equal',wordsDailyGoals:[],startDate:this.getSelectedDate()};
     this.state.modal={type:'addTask'}; this.render();
   },
   openEditTask(taskId) {
     const task=this.state.tasks.find(t=>t.id===taskId); if (!task) return;
-    this.state.wizard={editId:taskId,step:1,name:task.name,type:task.type,goalUnit:task.goalUnit||'páginas',totalGoal:task.type==='goal'?(task.totalBook||task.dailyGoals.reduce((a,b)=>a+b,0)):'',totalPages:task.totalPages||0,startOffset:task.startOffset||0,daysToComplete:task.type==='goal'?task.dailyGoals.length:'',distribution:'equal',dailyGoals:task.dailyGoals||[],schedule:task.schedule||'flexible',scheduledTime:task.scheduledTime||'08:00',daysOfWeek:task.daysOfWeek||[0,1,2,3,4,5,6],chapterPages:task.chapterPages||[],numChapters:(task.chapterPages&&task.chapterPages.length)||'',dailyMinutes:task.dailyMinutes||'',wordsEnabled:!!(task.wordsDailyGoals&&task.wordsDailyGoals.length),wordsTotal:task.wordsTotal||'',wordsOffset:task.wordsOffset||0,wordsDays:task.wordsDailyGoals?task.wordsDailyGoals.length:'',wordsDistribution:'equal',wordsDailyGoals:task.wordsDailyGoals||[]};
+    this.state.wizard={editId:taskId,step:1,name:task.name,type:task.type,goalUnit:task.goalUnit||'páginas',totalGoal:task.type==='goal'?(task.totalBook||task.dailyGoals.reduce((a,b)=>a+b,0)):'',totalPages:task.totalPages||0,startOffset:task.startOffset||0,daysToComplete:task.type==='goal'?task.dailyGoals.length:'',distribution:'equal',dailyGoals:task.dailyGoals||[],schedule:task.schedule||'flexible',scheduledTime:task.scheduledTime||'08:00',daysOfWeek:task.daysOfWeek||[0,1,2,3,4,5,6],chapterPages:task.chapterPages||[],numChapters:(task.chapterPages&&task.chapterPages.length)||'',dailyMinutes:task.dailyMinutes||'',wordsEnabled:!!(task.wordsDailyGoals&&task.wordsDailyGoals.length),wordsTotal:task.wordsTotal||'',wordsOffset:task.wordsOffset||0,wordsDays:task.wordsDailyGoals?task.wordsDailyGoals.length:'',wordsDistribution:'equal',wordsDailyGoals:task.wordsDailyGoals||[],startDate:task.startDate||this.getToday()};
     this.state.modal={type:'addTask'}; this.render();
   },
   renderAddTaskModal() {
@@ -1965,7 +2027,7 @@ renderManage() {
     if (w.step===1) {
       const dows=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
       content=`<div class="modal-title">${isEdit?'Editar tarefa':'Nova tarefa'}</div>
-        <div class="modal-sub">Passo 1: tipo e nome</div>
+        <div class="modal-sub">Passo 1: tipo, nome e data</div>
         <div class="form-group"><label class="form-label">Tipo</label>
           <div class="toggle-group">
             <button class="toggle-btn ${w.type==='simple'?'active':''}" onclick="App.setWizard('type','simple')">✅ Simples</button>
@@ -1974,6 +2036,9 @@ renderManage() {
         </div>
         <div class="form-group"><label class="form-label">Nome</label>
           <input class="form-input" id="wiz-name" placeholder="Ex: Meditar, Ler livro..." value="${w.name}" oninput="App.state.wizard.name=this.value">
+        </div>
+        <div class="form-group"><label class="form-label">Data de início</label>
+          <input class="form-input" id="wiz-start-date" type="date" value="${w.startDate || this.getSelectedDate()}" onchange="App.state.wizard.startDate=this.value">
         </div>
         <div class="form-group"><label class="form-label">Dias da semana</label>
           <div class="toggle-group">${dows.map((l,i)=>`<button class="toggle-btn ${w.daysOfWeek.includes(i)?'active':''}" onclick="App.toggleDow(${i})" style="font-size:12px;padding:7px 4px">${l}</button>`).join('')}</div>
@@ -2272,8 +2337,8 @@ renderManage() {
     if(w.editId){
       const task=this.state.tasks.find(t=>t.id===w.editId);
       if(task){
-        Object.assign(task,{name:w.name.trim(),type:w.type,schedule:w.schedule,scheduledTime:w.schedule==='fixed'?w.scheduledTime:null,daysOfWeek:w.daysOfWeek});
-        if(w.type==='goal'){          Object.assign(task,{goalUnit:w.goalUnit,dailyGoals,startDate:task.startDate||today,totalBook:parseInt(w.totalGoal),startOffset:offset});
+        Object.assign(task,{name:w.name.trim(),type:w.type,schedule:w.schedule,scheduledTime:w.schedule==='fixed'?w.scheduledTime:null,daysOfWeek:w.daysOfWeek,startDate:w.startDate||task.startDate||today});
+        if(w.type==='goal'){          Object.assign(task,{goalUnit:w.goalUnit,dailyGoals,startDate:w.startDate||task.startDate||today,totalBook:parseInt(w.totalGoal),startOffset:offset});
           // Salva chapterPages e monta unitConversions para conversão por página
           if(w.chapterPages&&w.chapterPages.length>0&&parseInt(w.numChapters)>0){
             const cp=w.chapterPages.map(v=>parseInt(v)||0);
@@ -2293,14 +2358,14 @@ renderManage() {
             let wdg;
             if(w.wordsDistribution==='custom'&&w.wordsDailyGoals.length===days){wdg=w.wordsDailyGoals.map(Number);}
             else{const eq=Math.floor(remainingW/days),rem=remainingW-eq*(days-1);wdg=Array.from({length:days},(_,i)=>i===days-1?rem:eq);}
-            task.wordsTotal=totalW;task.wordsOffset=offsetW;task.wordsDailyGoals=wdg;task.startDate=task.startDate||today;
+            task.wordsTotal=totalW;task.wordsOffset=offsetW;task.wordsDailyGoals=wdg;task.startDate=w.startDate||task.startDate||today;
           } else {task.wordsTotal=0;task.wordsDailyGoals=[];}
         }
       }
     } else {
-      const task={id:this.uid(),name:w.name.trim(),type:w.type,active:true,schedule:w.schedule,scheduledTime:w.schedule==='fixed'?w.scheduledTime:null,daysOfWeek:w.daysOfWeek};
+      const task={id:this.uid(),name:w.name.trim(),type:w.type,active:true,schedule:w.schedule,scheduledTime:w.schedule==='fixed'?w.scheduledTime:null,daysOfWeek:w.daysOfWeek,startDate:w.startDate||today};
       if(w.type==='goal'){
-        Object.assign(task,{goalUnit:w.goalUnit,dailyGoals,startDate:today,totalBook:parseInt(w.totalGoal),startOffset:offset});
+        Object.assign(task,{goalUnit:w.goalUnit,dailyGoals,startDate:w.startDate||today,totalBook:parseInt(w.totalGoal),startOffset:offset});
         // Salva chapterPages e monta unitConversions para conversão por página
         if(w.chapterPages&&w.chapterPages.length>0&&parseInt(w.numChapters)>0){
           const cp=w.chapterPages.map(v=>parseInt(v)||0);
@@ -2318,7 +2383,7 @@ renderManage() {
         if(offset>0){
           this.state.tasks.push(task);
           // We'll set it after push so task.id is available
-          this.setTaskDayData(task.id,today,{progress:0,completed:false,_offsetRegistered:true});
+          this.setTaskDayData(task.id,w.startDate||today,{progress:0,completed:false,_offsetRegistered:true});
         }
       } else if(w.type==='simple'){
         task.dailyMinutes=parseInt(w.dailyMinutes)||0;
@@ -2328,7 +2393,7 @@ renderManage() {
           let wdg;
           if(w.wordsDistribution==='custom'&&w.wordsDailyGoals.length===days){wdg=w.wordsDailyGoals.map(Number);}
           else{const eq=Math.floor(remainingW/days),rem=remainingW-eq*(days-1);wdg=Array.from({length:days},(_,i)=>i===days-1?rem:eq);}
-          task.wordsTotal=totalW;task.wordsOffset=offsetW;task.wordsDailyGoals=wdg;task.startDate=today;
+          task.wordsTotal=totalW;task.wordsOffset=offsetW;task.wordsDailyGoals=wdg;task.startDate=w.startDate||today;
         }
       }
       if(!this.state.tasks.includes(task))this.state.tasks.push(task);
@@ -2337,27 +2402,29 @@ renderManage() {
   },
 
   // ===================== LOG PROGRESS =====================
-  openLogWords(taskId){
+  openLogWords(taskId, date){
     const task=this.state.tasks.find(t=>t.id===taskId); if(!task)return;
-    const today=this.getToday(),data=this.getTaskDayData(task.id,today);
-    this.state.modal={type:'logWords',taskId,logAmount:data.wordsProgress||0};
+    const targetDate=date||this.getToday();
+    const data=this.getTaskDayData(task.id,targetDate);
+    this.state.modal={type:'logWords',taskId,logAmount:data.wordsProgress||0,targetDate};
     this.render();
   },
   renderLogWordsModal(){
     const m=this.state.modal,task=this.state.tasks.find(t=>t.id===m.taskId); if(!task)return'';
-    const today=this.getToday(),goal=this.getWordsGoalForDay(task,today);
-    const data=this.getTaskDayData(task.id,today),current=data.wordsProgress||0;
-    const totalDone=this.calcWordsCumulative(task,today);
+    const targetDate=m.targetDate||this.getToday();
+    const goal=this.getWordsGoalForDay(task,targetDate);
+    const data=this.getTaskDayData(task.id,targetDate),current=data.wordsProgress||0;
+    const totalDone=this.calcWordsCumulative(task,targetDate);
     return `<div class="overlay center" onclick="if(event.target===this)App.closeModal()">
       <div class="modal card-modal">
         <div class="modal-handle"></div>
         <div class="modal-title">📝 Registrar palavras</div>
         <div class="modal-sub">${task.name}</div>
         <div style="background:var(--surface2);border-radius:12px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:var(--muted)">
-          Meta hoje: <b style="color:var(--text)">${goal} palavras</b> · Feitas hoje: <b style="color:var(--accent)">${current}</b> · Total: <b style="color:var(--accent2)">${totalDone}/${task.wordsTotal}</b>
+          Meta: <b style="color:var(--text)">${goal} palavras</b> · Feitas no dia: <b style="color:var(--accent)">${current}</b> · Total: <b style="color:var(--accent2)">${totalDone}/${task.wordsTotal}</b>
         </div>
         <div class="form-group">
-          <label class="form-label">Palavras estudadas hoje</label>
+          <label class="form-label">Palavras estudadas no dia</label>
           <input class="form-input" id="log-words-input" type="number" min="0" value="${current}" style="font-size:24px;font-weight:700;text-align:center">
         </div>
         <button class="btn-primary" onclick="App.confirmLogWords()">✓ Salvar</button>
@@ -2369,34 +2436,36 @@ renderManage() {
     const m=this.state.modal,task=this.state.tasks.find(t=>t.id===m.taskId); if(!task)return;
     const el=document.getElementById('log-words-input');
     const val=parseInt(el?el.value:0)||0;
-    const today=this.getToday();
-    this.setTaskDayData(task.id,today,{wordsProgress:val});
+    const targetDate=m.targetDate||this.getToday();
+    this.setTaskDayData(task.id,targetDate,{wordsProgress:val});
     this.save();this.closeModal();this.render();
-    const goal=this.getWordsGoalForDay(task,today);
+    const goal=this.getWordsGoalForDay(task,targetDate);
     this.showToast(`📝 ${val}/${goal} palavras`,'success');
   },
-  openLogProgress(taskId){    const task=this.state.tasks.find(t=>t.id===taskId); if(!task)return;
-    const today=this.getToday(),data=this.getTaskDayData(task.id,today);
+  openLogProgress(taskId, date){    const task=this.state.tasks.find(t=>t.id===taskId); if(!task)return;
+    const targetDate=date||this.getToday();
+    const data=this.getTaskDayData(task.id,targetDate);
     const startOffset=task.startOffset||0;
-    const todayIdx=this.daysDiff(task.startDate,today);
+    const targetIdx=this.daysDiff(task.startDate,targetDate);
     // Cumulative done in previous task days (not counting startOffset)
     let cumDaysBefore=0;
-    for(let i=0;i<todayIdx;i++){
+    for(let i=0;i<targetIdx;i++){
       const d=this.addDays(task.startDate,i);
       const dd=this.getTaskDayData(task.id,d);
       cumDaysBefore+=(dd.progress||0);
     }
     const todayProgress=data.progress||0;
-    // absolutePosition = startOffset + days done + today's progress
+    // absolutePosition = startOffset + days done + day's progress
     const currentPosition=startOffset+cumDaysBefore+todayProgress;
     // cumDoneBefore in absolute terms = startOffset + cumDaysBefore
     const cumDoneBefore=startOffset+cumDaysBefore;
-    this.state.modal={type:'logProgress',taskId,logMode:'position',logAmount:'',currentPosition,cumDoneBefore,todayProgress};
+    this.state.modal={type:'logProgress',taskId,logMode:'position',logAmount:'',currentPosition,cumDoneBefore,todayProgress,targetDate};
     this.render();
   },
  renderLogProgressModal(){
   const m=this.state.modal,task=this.state.tasks.find(t=>t.id===m.taskId); if(!task)return'';
-  const today=this.getToday(),goal=this.getTaskGoalForDay(task,today);
+  const targetDate=m.targetDate||this.getToday();
+  const goal=this.getTaskGoalForDay(task,targetDate);
   const startOffset=task.startOffset||0;
   const totalBook=task.totalBook||task.dailyGoals.reduce((a,b)=>a+b,0)+startOffset;
   const startOfToday=m.cumDoneBefore||0;
@@ -2422,7 +2491,7 @@ renderManage() {
       <div class="modal-sub">${task.name}</div>
 
       <div style="background:var(--surface2);border-radius:12px;padding:12px 14px;margin-bottom:16px">
-        <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px"><span style="color:var(--muted)">Meta hoje</span><b>${goal} ${task.goalUnit}</b></div>
+        <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px"><span style="color:var(--muted)">Meta no dia</span><b>${goal} ${task.goalUnit}</b></div>
         <div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--muted)">Posição atual</span><b style="color:var(--accent)">${totalReadSoFar} / ${totalBook} ${task.goalUnit}</b></div>
       </div>
 
@@ -2532,8 +2601,8 @@ renderManage() {
   // Confirma e salva o progresso (com conversão se necessário)
   confirmLogProgress(){
     const m=this.state.modal,task=this.state.tasks.find(t=>t.id===m.taskId); if(!task)return;
-    const today=this.getToday();
-    const goal=this.getTaskGoalForDay(task,today);
+    const targetDate=m.targetDate||this.getToday();
+    const goal=this.getTaskGoalForDay(task,targetDate);
     const selectedUnit=m.selectedUnit||task.goalUnit;
     const isAltUnit=selectedUnit!==task.goalUnit;
     const inputVal=parseFloat(m.logAmount);
@@ -2560,15 +2629,15 @@ renderManage() {
         // Converte: valor_alt × taxa = páginas equivalentes
         const pagesEquiv=Math.round(inputVal*convRate);
         // Soma ao progresso já existente do dia
-        const existingProgress=this.getTaskDayData(task.id,today).progress||0;
+        const existingProgress=this.getTaskDayData(task.id,targetDate).progress||0;
         newProgressPages=existingProgress+pagesEquiv;
         this.showToast(`+${pagesEquiv} ${task.goalUnit} (${inputVal} ${selectedUnit})`, 'success');
       } else {
         // Sem taxa: registra como "+N unidades alt" sem converter — armazena em altProgress
-        const data=this.getTaskDayData(task.id,today);
+        const data=this.getTaskDayData(task.id,targetDate);
         const altProgress=(data.altProgress||{});
         altProgress[selectedUnit]=(altProgress[selectedUnit]||0)+inputVal;
-        this.setTaskDayData(task.id,today,{altProgress});
+        this.setTaskDayData(task.id,targetDate,{altProgress});
         this.save(); this.closeModal(); this.render();
         this.showToast(`+${inputVal} ${selectedUnit} registrado(s)`, 'success');
         return;
@@ -2592,12 +2661,12 @@ renderManage() {
     }
 
     // Salva o progresso e dispara fluxo normal
-    this.setTaskDayData(task.id,today,{progress:newProgressPages});
+    this.setTaskDayData(task.id,targetDate,{progress:newProgressPages});
     this.save();
     const isFull=newProgressPages>=goal;
-    if(isFull&&!this.getTaskDayData(task.id,today).finishedTime){
+    if(isFull&&!this.getTaskDayData(task.id,targetDate).finishedTime){
       this.closeModal();
-      this.promptFinishTime(task.id,today);
+      this.promptFinishTime(task.id,targetDate);
     } else {
       this.closeModal();
       this.render();
@@ -2607,12 +2676,14 @@ renderManage() {
 
   // Abre modal para definir taxa de conversão de uma unidade alternativa
   openDefineConversion(taskId,unit){
-    this.state.modal={type:'defineConversion',taskId,unit};
+    const targetDate=(this.state.modal&&this.state.modal.targetDate)||this.getToday();
+    this.state.modal={type:'defineConversion',taskId,unit,targetDate};
     this.render();
   },
   renderDefineConversionModal(){
     const m=this.state.modal,task=this.state.tasks.find(t=>t.id===m.taskId); if(!task)return'';
     const existing=(task.unitConversions||{})[m.unit]||'';
+    const targetDate=m.targetDate||this.getToday();
     return `<div class="overlay center" onclick="if(event.target===this)App.closeModal()">
       <div class="modal card-modal">
         <div class="modal-title">📐 Definir conversão</div>
@@ -2624,8 +2695,8 @@ renderManage() {
           <label class="form-label">1 ${m.unit} = quantos(as) ${task.goalUnit}?</label>
           <input class="form-input" id="conv-rate-input" type="number" min="0.1" step="0.1" placeholder="ex: 8" value="${existing}" style="font-size:20px;font-weight:700;text-align:center">
         </div>
-        <button class="btn-primary" onclick="App.saveConversionRate('${taskId}','${m.unit}')">💾 Salvar</button>
-        <button class="btn-secondary" onclick="App.openLogProgress('${taskId}')">← Voltar</button>
+        <button class="btn-primary" onclick="App.saveConversionRate('${task.id}','${m.unit}')">💾 Salvar</button>
+        <button class="btn-secondary" onclick="App.openLogProgress('${task.id}','${targetDate}')">← Voltar</button>
       </div>
     </div>`;
   },
@@ -2638,7 +2709,8 @@ renderManage() {
     task.unitConversions[unit]=rate;
     this.save();
     this.showToast(`✓ 1 ${unit} = ${rate} ${task.goalUnit}`,'success');
-    this.openLogProgress(taskId);
+    const targetDate=(this.state.modal&&this.state.modal.targetDate)||this.getToday();
+    this.openLogProgress(taskId,targetDate);
   },
 
   // ===================== TASK DETAIL =====================
@@ -2665,11 +2737,17 @@ renderManage() {
     const dowLabels=['D','S','T','Q','Q','S','S'];
     const statusClass={done:'tl-done',partial:'tl-partial',missed:'tl-missed',today:'tl-today tl-partial',future:'tl-future',skipped:'tl-skipped'};
 
-    const dayStatuses=task.dailyGoals.map((goal,i)=>{
+    const dayStatuses=task.dailyGoals.map((g,i)=>{
       const date=this.addDays(task.startDate,i);
       const data=this.getTaskDayData(task.id,date);
       const progress=data.progress||0;
-      taskGoalSum+=goal; totalDone+=Math.min(goal,progress);
+      
+      // Para estatísticas de progresso acumulado, usamos o goal planejado atual (g)
+      taskGoalSum+=g; totalDone+=Math.min(g,progress);
+      
+      // Para visualização de cada dia no calendário, priorizamos o goal original histórico
+      const goal = data.originalGoal !== undefined ? data.originalGoal : g;
+      
       const isPast=date<today,isToday=date===today,isFuture=date>today;
       let status='future';
       if(isFuture)status='future';
@@ -2938,6 +3016,209 @@ renderManage() {
       }
     });
   },
+
+  checkRecalculateBacklog() {
+    const today = this.getToday();
+    const yesterday = this.addDays(today, -1);
+    
+    this.state.tasks.forEach(task => {
+      if (task.type !== 'goal' || task.deleted || !task.active) return;
+      
+      const yesterdayIdx = this.daysDiff(task.startDate, yesterday);
+      const todayIdx = this.daysDiff(task.startDate, today);
+      
+      if (yesterdayIdx >= 0 && yesterdayIdx < task.dailyGoals.length) {
+        if (todayIdx >= 0 && todayIdx < task.dailyGoals.length) {
+          const yesterdayProgress = this.getTaskDayData(task.id, yesterday).progress || 0;
+          const yesterdayGoal = task.dailyGoals[yesterdayIdx];
+          
+          if (yesterdayProgress < yesterdayGoal) {
+            const key = `foco_recalc_${task.id}_${yesterday}`;
+            if (!localStorage.getItem(key)) {
+              if (!this.state.modal) {
+                this.state.modal = {
+                  type: 'recalculate',
+                  taskId: task.id,
+                  yesterday: yesterday,
+                  yesterdayIdx: yesterdayIdx,
+                  backlog: yesterdayGoal - yesterdayProgress
+                };
+              }
+            }
+          }
+        }
+      }
+    });
+  },
+
+  applyAutoRecalculate(taskId, yesterday, backlog) {
+    const task = this.state.tasks.find(t => t.id === taskId);
+    if (!task) return;
+    
+    const yesterdayIdx = this.daysDiff(task.startDate, yesterday);
+    const today = this.getToday();
+    const todayIdx = this.daysDiff(task.startDate, today);
+    
+    if (yesterdayIdx >= 0 && yesterdayIdx < task.dailyGoals.length) {
+      const yesterdayProgress = this.getTaskDayData(task.id, yesterday).progress || 0;
+      const yesterdayGoal = task.dailyGoals[yesterdayIdx];
+      // Preserva a meta original e a cópia das metas diárias antes de modificar
+      this.setTaskDayData(task.id, yesterday, { 
+        originalGoal: yesterdayGoal, 
+        preRecalcGoals: [...task.dailyGoals] 
+      });
+      task.dailyGoals[yesterdayIdx] = yesterdayProgress;
+      
+      if (todayIdx >= 0 && todayIdx < task.dailyGoals.length) {
+        task.dailyGoals[todayIdx] += backlog;
+      }
+      
+      localStorage.setItem(`foco_recalc_${task.id}_${yesterday}`, '1');
+      this.save();
+      this.closeModal();
+      this.render();
+      this.showToast('⚡ Meta recalculada! O atraso foi somado a hoje.', 'success');
+    }
+  },
+
+  applyManualRecalculate(taskId, yesterday) {
+    const task = this.state.tasks.find(t => t.id === taskId);
+    if (!task) return;
+    
+    const m = this.state.modal;
+    if (!m || !m.adjustments) return;
+    
+    const yesterdayIdx = this.daysDiff(task.startDate, yesterday);
+    const today = this.getToday();
+    const todayIdx = this.daysDiff(task.startDate, today);
+    
+    if (yesterdayIdx >= 0 && yesterdayIdx < task.dailyGoals.length) {
+      const yesterdayProgress = this.getTaskDayData(task.id, yesterday).progress || 0;
+      const yesterdayGoal = task.dailyGoals[yesterdayIdx];
+      // Preserva a meta original e a cópia das metas diárias antes de modificar
+      this.setTaskDayData(task.id, yesterday, { 
+        originalGoal: yesterdayGoal, 
+        preRecalcGoals: [...task.dailyGoals] 
+      });
+      task.dailyGoals[yesterdayIdx] = yesterdayProgress;
+      
+      m.adjustments.forEach((adj, idx) => {
+        const targetIdx = todayIdx + idx;
+        if (targetIdx < task.dailyGoals.length) {
+          task.dailyGoals[targetIdx] += adj;
+        }
+      });
+      
+      localStorage.setItem(`foco_recalc_${task.id}_${yesterday}`, '1');
+      this.save();
+      this.closeModal();
+      this.render();
+      this.showToast('✏️ Metas redistribuídas com sucesso!', 'success');
+    }
+  },
+
+  renderRecalculateModal() {
+    const m = this.state.modal;
+    const task = this.state.tasks.find(t => t.id === m.taskId);
+    if (!task) return '';
+
+    const today = this.getToday();
+    const todayIdx = this.daysDiff(task.startDate, today);
+
+    if (m.subView === 'manual') {
+      if (!m.adjustments) {
+        m.adjustments = Array(task.dailyGoals.length - todayIdx).fill(0);
+      }
+
+      const currentSum = m.adjustments.reduce((a, b) => a + b, 0);
+      const diff = m.backlog - currentSum;
+
+      let valMessage = '';
+      let isValid = false;
+      if (diff === 0) {
+        valMessage = `<div style="color:var(--green);font-weight:600;font-size:13px;margin-bottom:12px;text-align:center">✅ Distribuição perfeita! Total alocado com sucesso.</div>`;
+        isValid = true;
+      } else if (diff > 0) {
+        valMessage = `<div style="color:var(--orange);font-weight:600;font-size:13px;margin-bottom:12px;text-align:center">⚠️ Faltando alocar: ${diff} ${task.goalUnit}</div>`;
+      } else {
+        valMessage = `<div style="color:var(--red);font-weight:600;font-size:13px;margin-bottom:12px;text-align:center">❌ Excedeu o atraso por: ${Math.abs(diff)} ${task.goalUnit}</div>`;
+      }
+
+      const dayNames = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+
+      const rows = m.adjustments.map((g, idx) => {
+        const targetIdx = todayIdx + idx;
+        const date = this.addDays(today, idx);
+        const [yr, mo, da] = date.split('-').map(Number);
+        const lbl = idx === 0 ? 'Hoje' : dayNames[new Date(yr, mo - 1, da).getDay()];
+        const originalGoal = task.dailyGoals[targetIdx];
+        const newGoal = originalGoal + g;
+
+        return `<div class="dist-day-row" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;background:var(--surface2);border-radius:10px;padding:8px 12px">
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:700">${lbl}</div>
+            <div style="font-size:11px;color:var(--muted)">Original: ${originalGoal} · <b style="color:var(--accent)">Novo: ${newGoal}</b></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-weight:bold;color:var(--accent)">+</span>
+            <input class="dist-day-input" type="number" min="0" value="${g}" 
+              oninput="App.state.modal.adjustments[${idx}] = parseInt(this.value) || 0; App.render()" 
+              style="width:70px;background:var(--surface3);border:1px solid var(--border);border-radius:6px;padding:6px;color:var(--text);font-family:var(--font);font-size:14px;font-weight:600;text-align:center">
+          </div>
+        </div>`;
+      }).join('');
+
+      return `<div class="overlay center">
+        <div class="modal card-modal" style="max-width:440px">
+          <div class="modal-title" style="text-align:center">Ajustar Manualmente</div>
+          <div class="modal-sub" style="text-align:center;margin-bottom:16px">Distribuir o atraso de <b style="color:var(--red)">${m.backlog} ${task.goalUnit}</b> nos dias restantes</div>
+
+          <div style="max-height:280px;overflow-y:auto;margin-bottom:16px;padding-right:4px">
+            ${rows}
+          </div>
+
+          ${valMessage}
+
+          <div style="display:flex;gap:10px">
+            <button class="btn-secondary" onclick="App.state.modal.subView=null; App.render()" style="flex:1">Voltar</button>
+            <button class="btn-primary" onclick="App.applyManualRecalculate('${task.id}', '${m.yesterday}')" ${!isValid?'disabled style="opacity:0.5;cursor:not-allowed"':''} style="flex:1">Confirmar</button>
+          </div>
+        </div>
+      </div>`;
+    }
+
+    return `<div class="overlay center">
+      <div class="modal card-modal" style="max-width:440px">
+        <div style="font-size:44px;text-align:center;margin-bottom:12px">⚡</div>
+        <div class="modal-title" style="text-align:center;margin-bottom:6px">Atraso na Meta Ontem!</div>
+        <div class="modal-sub" style="text-align:center;margin-bottom:20px;line-height:1.4">
+          Ontem na meta <b>${task.name}</b> você realizou <b style="color:var(--accent2)">${this.getTaskDayData(task.id, m.yesterday).progress || 0}</b> de <b style="color:var(--accent)">${task.dailyGoals[m.yesterdayIdx]} ${task.goalUnit}</b>.<br>
+          Como deseja gerenciar o atraso de <b style="color:var(--red)">${m.backlog} ${task.goalUnit}</b>?
+        </div>
+
+        <div class="option-list" style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px">
+          <button class="option-btn" onclick="App.applyAutoRecalculate('${task.id}', '${m.yesterday}', ${m.backlog})" style="display:flex;align-items:flex-start;text-align:left;padding:14px;border:1px solid rgba(139,124,246,.25);background:rgba(139,124,246,.03)">
+            <span class="opt-icon" style="font-size:24px;margin-right:12px;margin-top:2px">⚡</span>
+            <div>
+              <b style="font-size:14px;color:var(--accent)">Recálculo Automático</b>
+              <p style="font-size:11px;color:var(--muted);margin-top:4px;font-weight:400;line-height:1.4">Adiciona o atraso inteiramente na meta de hoje. As metas dos dias seguintes permanecem inalteradas. (Ontem constará como 100% concluído!)</p>
+            </div>
+          </button>
+
+          <button class="option-btn" onclick="App.state.modal.subView='manual'; App.render()" style="display:flex;align-items:flex-start;text-align:left;padding:14px;border:1px solid var(--border)">
+            <span class="opt-icon" style="font-size:24px;margin-right:12px;margin-top:2px">✏️</span>
+            <div>
+              <b style="font-size:14px;color:var(--text)">Ajustar Manualmente</b>
+              <p style="font-size:11px;color:var(--muted);margin-top:4px;font-weight:400;line-height:1.4">Distribuir o atraso manualmente entre hoje e os próximos dias restantes da sua meta.</p>
+            </div>
+          </button>
+        </div>
+
+        <button class="btn-secondary" onclick="App.closeModal();" style="width:100%">Ignorar por enquanto</button>
+      </div>
+    </div>`;
+  },
+
   renderMissedTaskModal(){
     const m=this.state.modal,task=this.state.tasks.find(t=>t.id===m.taskId); if(!task)return'';
     return `<div class="overlay center">
@@ -3097,6 +3378,7 @@ renderManage() {
     this.loadState();
     this.applyTheme();
     this.checkMissedTasks();
+    this.checkRecalculateBacklog();
     this.render();
   }
 };
