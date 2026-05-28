@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
 <title>Foco — Tarefas</title>
+<link rel="icon" type="image/png" href="./learning.png">
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -340,7 +341,9 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);display:flex
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <div id="auth-screen">
   <div class="auth-box">
-    <div class="auth-logo">🎯</div>
+    <div class="auth-logo" style="margin-bottom: 12px; display: flex; justify-content: center;">
+      <img src="./learning.png" style="width: 72px; height: 72px; border-radius: 18px; box-shadow: 0 8px 20px rgba(255,107,179,0.25);" alt="Foco Logo">
+    </div>
     <div class="auth-title">Foco</div>
     <div class="auth-sub" id="auth-subtitle">Entre na sua conta</div>
     <div class="auth-error" id="auth-error"></div>
@@ -632,7 +635,13 @@ const Auth = {
   },
 
   async logout() {
-    await db.auth.signOut();
+    try {
+      await db.auth.signOut();
+    } catch(e) {
+      console.warn('SignOut in background failed:', e);
+    }
+    await Cloud.unsubscribe();
+    this.showLogin();
   },
 
   showError(msg) {
