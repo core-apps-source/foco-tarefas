@@ -537,8 +537,10 @@ const Auth = {
         App.render();
       }
       if (event === 'SIGNED_OUT') {
-        await Cloud.unsubscribe();
         this.showLogin();
+        Cloud.unsubscribe().catch(e => {
+          console.warn('Unsubscribe on SIGNED_OUT failed:', e);
+        });
       }
     });
   },
@@ -639,13 +641,16 @@ const Auth = {
   },
 
   async logout() {
-    try {
-      await db.auth.signOut();
-    } catch(e) {
-      console.warn('SignOut in background failed:', e);
-    }
-    await Cloud.unsubscribe();
+    // 1. Atualizar UI de forma imediata e sem travar
     this.showLogin();
+    
+    // 2. Executar signOut e unsubscribe em background de forma segura
+    db.auth.signOut().catch(e => {
+      console.warn('SignOut in background failed:', e);
+    });
+    Cloud.unsubscribe().catch(e => {
+      console.warn('Unsubscribe failed:', e);
+    });
   },
 
   showError(msg) {
