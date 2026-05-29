@@ -2762,6 +2762,7 @@ renderManage() {
     }
     else if(w.step===2&&w.type==='bible'){
       const days=parseInt(w.daysToComplete)||365;
+      w.daysToComplete=days; // garante que fique salvo como número válido
       w.step=w.distribution==='custom'?3:99;
     }
     else if(w.step===2){
@@ -2769,6 +2770,8 @@ renderManage() {
       const offset=parseInt(w.startOffset)||0;
       if(offset>0&&offset>=parseInt(w.totalGoal)){this.showToast('A posição inicial deve ser menor que o total','error');return;}
       if(!w.daysToComplete||parseInt(w.daysToComplete)<=0){this.showToast('Digite o prazo em dias','error');return;}
+      const days=parseInt(w.daysToComplete)||30;
+      w.daysToComplete=days; // garante que fique salvo como número válido
       w.step=w.distribution==='custom'?3:99;
     }
     else if(w.step===3&&w.type==='bible'){
@@ -2794,7 +2797,10 @@ renderManage() {
     if(w.type==='goal'||w.type==='bible'){
       const totalBook=w.type==='bible'?1189:parseInt(w.totalGoal);
       const remaining=totalBook-offset; // pages/chapters left to read
-      const days=parseInt(w.daysToComplete);
+      let days=parseInt(w.daysToComplete);
+      if (isNaN(days) || days <= 0) {
+        days = w.type === 'bible' ? 365 : 30; // fallback de segurança
+      }
       if(w.distribution==='custom'&&w.dailyGoals.length===days){
         dailyGoals=w.dailyGoals.map(Number);
       } else {
