@@ -936,8 +936,79 @@ const App = {
     } catch(e) { this.state = this.defaultState(); }
   },
 
+  pruneState() {
+    if (!this.state) return;
+    const today = this.getToday();
+    
+    // 1. Limpeza de Tarefas Excluídas
+    const deletedTaskIds = new Set();
+    if (this.state.tasks) {
+      this.state.tasks.forEach(task => {
+        if (task.deleted) {
+          deletedTaskIds.add(task.id);
+          // Esvazia arrays pesados para economizar espaço
+          task.dailyGoals = [];
+          task.chapterPages = [];
+          task.wordsDailyGoals = [];
+          task.unitConversions = {};
+        }
+      });
+    }
+
+    // 2. Limpeza de Histórico
+    if (this.state.history) {
+      const dates = Object.keys(this.state.history);
+      dates.forEach(date => {
+        if (!date || !date.includes('-')) return;
+        const diffDays = this.daysDiff(date, today);
+        
+        if (!this.state.history[date]) return;
+        
+        // Remove histórico de tarefas deletadas
+        deletedTaskIds.forEach(taskId => {
+          if (this.state.history[date][taskId]) {
+            delete this.state.history[date][taskId];
+          }
+        });
+        
+        // Remove preRecalcGoals de histórico com mais de 7 dias
+        if (diffDays > 7) {
+          Object.keys(this.state.history[date]).forEach(taskId => {
+            if (this.state.history[date][taskId] && this.state.history[date][taskId].preRecalcGoals) {
+              delete this.state.history[date][taskId].preRecalcGoals;
+            }
+          });
+        }
+        
+        // Se o dia ficou vazio após as remoções, limpa a data inteira
+        if (Object.keys(this.state.history[date]).length === 0) {
+          delete this.state.history[date];
+        }
+      });
+    }
+
+    // 3. Limpeza de chaves foco_recalc_* antigas no localStorage
+    try {
+      const keysToRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('foco_recalc_')) {
+          const parts = key.split('_');
+          const dateStr = parts[parts.length - 1]; // formato YYYY-MM-DD
+          if (dateStr && dateStr.includes('-') && this.daysDiff(dateStr, today) > 30) {
+            keysToRemove.push(key);
+          }
+        }
+      }
+      keysToRemove.forEach(k => localStorage.removeItem(k));
+    } catch (e) {
+      console.warn('Erro ao limpar localStorage de recálculo:', e);
+    }
+  },
+
   save() {
     if (this.state) {
+      this.pruneState();
       this.state.last_updated = Date.now();
     }
     localStorage.setItem('foco_v2', JSON.stringify(this.state));
