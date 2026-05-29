@@ -1,6 +1,27 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
+<script>
+  // Limpeza de cache de emergência para forçar atualização do PWA
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(function(regs) {
+      for (let reg of regs) {
+        reg.unregister().then(function() {
+          console.log('SW antigo removido');
+        });
+      }
+    });
+  }
+  if ('caches' in window) {
+    caches.keys().then(function(keys) {
+      keys.forEach(function(key) {
+        caches.delete(key).then(function() {
+          console.log('Cache antigo limpo:', key);
+        });
+      });
+    });
+  }
+</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
 <title>Foco — Tarefas</title>
@@ -335,18 +356,38 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);display:flex
 .auth-divider{display:flex;align-items:center;gap:10px;margin:16px 0 0;}
 .auth-divider::before,.auth-divider::after{content:'';flex:1;height:1px;background:var(--border);}
 .auth-divider span{font-size:11px;color:var(--muted);font-weight:600;}
-.auth-logout-btn{position:fixed;top:16px;right:16px;z-index:1001;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:7px 12px;font-family:var(--font);font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;transition:all .15s;display:none;}
+.auth-logout-btn{position:fixed;top:16px;right:16px;z-index:40;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:7px 12px;font-family:var(--font);font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;transition:all .15s;display:none;}
 .auth-logout-btn:hover{color:var(--text);background:var(--surface3);}
 .auth-logout-btn.visible{display:block;}
 
-.task-card.overdue-card {
-  border: 2px solid var(--red) !important;
-  box-shadow: 0 0 12px rgba(255, 107, 107, 0.25) !important;
-  animation: pulseOverdue 2s infinite ease-in-out;
+.auth-btn-secondary {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  margin-top: 8px !important;
 }
-@keyframes pulseOverdue {
-  0%, 100% { box-shadow: 0 0 8px rgba(255, 107, 107, 0.25); }
-  50% { box-shadow: 0 0 16px rgba(255, 107, 107, 0.5); }
+.auth-btn-secondary:hover {
+  background: var(--surface3);
+}
+.bible-sel-wrap {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+.bible-sel-wrap select {
+  flex: 1;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  font-family: var(--font);
+  font-size: 15px;
+  color: var(--text);
+  outline: none;
+  cursor: pointer;
+}
+.bible-sel-wrap select:focus {
+  border-color: var(--accent);
 }
 
 </style>
@@ -373,6 +414,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);display:flex
              onkeydown="if(event.key==='Enter')Auth.submit()" />
     </div>
     <button class="auth-btn" id="auth-submit-btn" onclick="Auth.submit()">Entrar</button>
+    <button class="auth-btn auth-btn-secondary" id="auth-local-btn" onclick="Auth.loginLocal()">💻 Entrar no Modo Local (Offline)</button>
     <div id="forgot-wrap" style="text-align:center; margin-top:12px;">
       <a onclick="Auth.forgotPassword()" style="font-size:12px; color:var(--muted); cursor:pointer; text-decoration:underline;">
         Esqueceu a senha?
@@ -395,8 +437,16 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);display:flex
 // =====================================================
 const SUPABASE_URL = 'https://abvqnjezezwskcjmvhhm.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_8jZBXMIEY3I6GtWNCNMzhA_vtDgtS1p';
-const { createClient } = supabase;
-const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+let db = null;
+try {
+  if (typeof supabase !== 'undefined' && supabase.createClient) {
+    db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  } else {
+    console.warn('Supabase JS library not loaded.');
+  }
+} catch (e) {
+  console.error('Falha ao inicializar o cliente Supabase:', e);
+}
 
 // =====================================================
 //  CLOUD SYNC (Supabase) — manual only, no auto-save
@@ -406,8 +456,14 @@ const Cloud = {
   _realtimeChannel: null,
 
   async getUserId() {
-    const { data: { session } } = await db.auth.getSession();
-    return session?.user?.id || null;
+    if (!db || Auth.isLocal) return null;
+    try {
+      const { data: { session } } = await db.auth.getSession();
+      return session?.user?.id || null;
+    } catch (e) {
+      console.warn('Cloud.getUserId failed:', e);
+      return null;
+    }
   },
 
   setStatus(s) {
@@ -422,6 +478,7 @@ const Cloud = {
 
   // ☁️↑ SALVAR AGORA — envia estado local para a nuvem
   async push() {
+    if (!db || Auth.isLocal) { console.warn('Cloud.push: em modo local'); return false; }
     const userId = await this.getUserId();
     if (!userId) { console.warn('Cloud.push: sem sessão'); return false; }
     this.setStatus('syncing');
@@ -445,6 +502,7 @@ const Cloud = {
 
   // ☁️↓ RESTAURAR AGORA — substitui estado local pelo último backup na nuvem
   async pull() {
+    if (!db || Auth.isLocal) { console.warn('Cloud.pull: em modo local'); return false; }
     const userId = await this.getUserId();
     if (!userId) { console.warn('Cloud.pull: sem sessão'); return false; }
     this.setStatus('syncing');
@@ -474,40 +532,54 @@ const Cloud = {
 
   // Realtime — só lê, nunca faz push automático
   async subscribeRealtime() {
+    if (!db || Auth.isLocal) return;
     const userId = await this.getUserId();
     if (!userId) return;
-    if (this._realtimeChannel) {
-      await db.removeChannel(this._realtimeChannel);
-      this._realtimeChannel = null;
-    }
-    this._realtimeChannel = db
-      .channel(`user_data:${userId}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'user_data', filter: `user_id=eq.${userId}` },
-        (payload) => {
-          if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
-            const remoteData = payload.new?.data;
-            if (!remoteData) return;
-            console.log('Realtime: dados atualizados remotamente, aplicando…');
-            App.importDataSilent(JSON.stringify(remoteData));
-            App.render();
-            this.setStatus('ok');
+    try {
+      if (this._realtimeChannel) {
+        await db.removeChannel(this._realtimeChannel);
+        this._realtimeChannel = null;
+      }
+      this._realtimeChannel = db
+        .channel(`user_data:${userId}`)
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'user_data', filter: `user_id=eq.${userId}` },
+          (payload) => {
+            if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
+              const remoteData = payload.new?.data;
+              if (!remoteData) return;
+              console.log('Realtime: dados atualizados remotamente, aplicando…');
+              App.importDataSilent(JSON.stringify(remoteData));
+              App.render();
+              this.setStatus('ok');
+            }
           }
-        }
-      )
-      .subscribe((status) => console.log('Realtime status:', status));
+        )
+        .subscribe((status) => console.log('Realtime status:', status));
+    } catch (e) {
+      console.warn('subscribeRealtime error:', e);
+    }
   },
 
   async unsubscribe() {
-    if (this._realtimeChannel) {
-      await db.removeChannel(this._realtimeChannel);
-      this._realtimeChannel = null;
+    if (!db) return;
+    try {
+      if (this._realtimeChannel) {
+        await db.removeChannel(this._realtimeChannel);
+        this._realtimeChannel = null;
+      }
+    } catch (e) {
+      console.warn('unsubscribe error:', e);
     }
   },
 
   // Botão ☁️ — salvar agora
   async manualSave() {
+    if (!db || Auth.isLocal) {
+      App.showToast('💻 Modo Local ativo. Não há sincronização em nuvem.', 'error');
+      return;
+    }
     App.showToast('☁️ Salvando…', '');
     const ok = await this.push();
     if (ok) App.showToast('✅ Salvo na nuvem!', 'success');
@@ -516,6 +588,10 @@ const Cloud = {
 
   // Botão restaurar — puxa último backup
   async manualRestore() {
+    if (!db || Auth.isLocal) {
+      App.showToast('💻 Modo Local ativo. Não há sincronização em nuvem.', 'error');
+      return;
+    }
     if (!window.confirm('Restaurar último backup da nuvem? O estado local será substituído.')) return;
     App.showToast('☁️ Restaurando…', '');
     const ok = await this.pull();
@@ -530,29 +606,73 @@ const Cloud = {
 // =====================================================
 const Auth = {
   mode: 'login',
+  isLocal: false,
 
   async init() {
-    const { data: { session } } = await db.auth.getSession();
-    if (session) {
+    // 1. Check local mode setting from previous sessions
+    if (localStorage.getItem('foco_auth_mode') === 'local') {
+      this.isLocal = true;
       this.showApp();
-      await Cloud.pull();
-      await Cloud.subscribeRealtime();
       App.render();
+      return;
     }
-    db.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session) {
+
+    if (!db) {
+      console.warn('Supabase not initialized. Offline mode is available.');
+      return;
+    }
+
+    // 2. Safe check of Supabase session with a 4s timeout
+    try {
+      const getSessionPromise = db.auth.getSession();
+      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 4000));
+      
+      const { data: { session } } = await Promise.race([getSessionPromise, timeoutPromise]);
+      if (session) {
+        this.isLocal = false;
         this.showApp();
-        await Cloud.pull();
-        await Cloud.subscribeRealtime();
+        try { await Cloud.pull(); } catch(e) { console.warn('Cloud pull failed on init:', e); }
+        try { await Cloud.subscribeRealtime(); } catch(e) { console.warn('Cloud subscribe failed on init:', e); }
         App.render();
       }
-      if (event === 'SIGNED_OUT') {
-        this.showLogin();
-        Cloud.unsubscribe().catch(e => {
-          console.warn('Unsubscribe on SIGNED_OUT failed:', e);
-        });
-      }
-    });
+    } catch (e) {
+      console.warn('Supabase session check skipped or timed out:', e);
+    }
+
+    // 3. Setup auth state change listener
+    try {
+      db.auth.onAuthStateChange(async (event, session) => {
+        try {
+          if (event === 'SIGNED_IN' && session) {
+            Auth.isLocal = false;
+            localStorage.setItem('foco_auth_mode', 'cloud');
+            Auth.showApp();
+            try { await Cloud.pull(); } catch(e) { console.warn('Cloud pull failed on state change:', e); }
+            try { await Cloud.subscribeRealtime(); } catch(e) { console.warn('Cloud subscribe failed on state change:', e); }
+            App.render();
+          }
+          if (event === 'SIGNED_OUT') {
+            Auth.isLocal = false;
+            localStorage.removeItem('foco_auth_mode');
+            Auth.showLogin();
+            Cloud.unsubscribe().catch(e => {
+              console.warn('Unsubscribe on SIGNED_OUT failed:', e);
+            });
+          }
+        } catch (e) {
+          console.error('onAuthStateChange handler error:', e);
+        }
+      });
+    } catch (e) {
+      console.warn('Supabase auth listener registration failed:', e);
+    }
+  },
+
+  loginLocal() {
+    this.isLocal = true;
+    localStorage.setItem('foco_auth_mode', 'local');
+    this.showApp();
+    App.showToast('💻 Conectado no Modo Local', 'success');
   },
 
   showApp() {
@@ -585,6 +705,10 @@ const Auth = {
   },
 
   async forgotPassword() {
+    if (!db || this.isLocal) {
+      this.showError('O envio de senha só está disponível no modo online.');
+      return;
+    }
     const email = document.getElementById('auth-email').value.trim();
     if (!email) {
       this.showError('Digite seu e-mail acima para receber o link de redefinição.');
@@ -604,6 +728,10 @@ const Auth = {
   },
 
   async submit() {
+    if (!db) {
+      this.showError('Supabase offline. Por favor, use o Modo Local.');
+      return;
+    }
     const email = document.getElementById('auth-email').value.trim();
     const pass  = document.getElementById('auth-pass').value;
     const btn   = document.getElementById('auth-submit-btn');
@@ -651,32 +779,31 @@ const Auth = {
   },
 
   async logout() {
-    // 1. Fechar modais e atualizar UI de forma imediata
-    if (typeof App !== 'undefined' && App.closeModal) {
-      App.closeModal();
-    }
+    const wasLocal = this.isLocal;
+    this.isLocal = false;
+    localStorage.removeItem('foco_auth_mode');
     this.showLogin();
     
-    // 2. Executar signOut e unsubscribe em background de forma segura
-    db.auth.signOut().catch(e => {
-      console.warn('SignOut in background failed:', e);
-    });
-    Cloud.unsubscribe().catch(e => {
-      console.warn('Unsubscribe failed:', e);
-    });
+    if (db && !wasLocal) {
+      db.auth.signOut().catch(e => {
+        console.warn('SignOut in background failed:', e);
+      });
+    }
   },
 
   showError(msg) {
     const el = document.getElementById('auth-error');
+    if (!el) return;
     el.textContent = msg;
     el.classList.toggle('show', !!msg);
   },
 
   showSuccess(msg) {
     const el = document.getElementById('auth-success');
+    if (!el) return;
     el.textContent = msg;
     el.classList.toggle('show', !!msg);
-  },
+  }
 };
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -698,6 +825,100 @@ const THEMES = {
   vermelho:{ name:'Vermelho', desc:'Vermelho intenso', swatch:'linear-gradient(90deg,#dc2626,#f87171)', fill:'linear-gradient(90deg,#ef4444,#f87171)' },
   lilas:   { name:'Lilás',    desc:'Roxo lilás', swatch:'linear-gradient(90deg,#a78bfa,#ddd6fe)', fill:'linear-gradient(90deg,#c084fc,#ddd6fe)' },
 };
+
+const BIBLE_BOOKS = [
+  { id: 'gn', name: 'Gênesis', chapters: 50, testament: 'AT' },
+  { id: 'ex', name: 'Êxodo', chapters: 40, testament: 'AT' },
+  { id: 'lv', name: 'Levítico', chapters: 27, testament: 'AT' },
+  { id: 'nm', name: 'Números', chapters: 36, testament: 'AT' },
+  { id: 'dt', name: 'Deuteronômio', chapters: 34, testament: 'AT' },
+  { id: 'js', name: 'Josué', chapters: 24, testament: 'AT' },
+  { id: 'jz', name: 'Juízes', chapters: 21, testament: 'AT' },
+  { id: 'rt', name: 'Rute', chapters: 4, testament: 'AT' },
+  { id: '1sm', name: '1 Samuel', chapters: 31, testament: 'AT' },
+  { id: '2sm', name: '2 Samuel', chapters: 24, testament: 'AT' },
+  { id: '1rs', name: '1 Reis', chapters: 22, testament: 'AT' },
+  { id: '2rs', name: '2 Reis', chapters: 25, testament: 'AT' },
+  { id: '1cr', name: '1 Crônicas', chapters: 29, testament: 'AT' },
+  { id: '2cr', name: '2 Crônicas', chapters: 36, testament: 'AT' },
+  { id: 'es', name: 'Esdras', chapters: 10, testament: 'AT' },
+  { id: 'ne', name: 'Neemias', chapters: 13, testament: 'AT' },
+  { id: 'et', name: 'Ester', chapters: 10, testament: 'AT' },
+  { id: 'jo', name: 'Jó', chapters: 42, testament: 'AT' },
+  { id: 'sl', name: 'Salmos', chapters: 150, testament: 'AT' },
+  { id: 'pv', name: 'Provérbios', chapters: 31, testament: 'AT' },
+  { id: 'ec', name: 'Eclesiastes', chapters: 12, testament: 'AT' },
+  { id: 'ct', name: 'Cânticos', chapters: 8, testament: 'AT' },
+  { id: 'is', name: 'Isaías', chapters: 66, testament: 'AT' },
+  { id: 'jr', name: 'Jeremias', chapters: 52, testament: 'AT' },
+  { id: 'lm', name: 'Lamentações', chapters: 5, testament: 'AT' },
+  { id: 'ez', name: 'Ezequiel', chapters: 48, testament: 'AT' },
+  { id: 'dn', name: 'Daniel', chapters: 12, testament: 'AT' },
+  { id: 'os', name: 'Oséias', chapters: 14, testament: 'AT' },
+  { id: 'jl', name: 'Joel', chapters: 3, testament: 'AT' },
+  { id: 'am', name: 'Amós', chapters: 9, testament: 'AT' },
+  { id: 'ob', name: 'Obadias', chapters: 1, testament: 'AT' },
+  { id: 'jn', name: 'Jonas', chapters: 4, testament: 'AT' },
+  { id: 'mq', name: 'Miqueias', chapters: 7, testament: 'AT' },
+  { id: 'na', name: 'Naum', chapters: 3, testament: 'AT' },
+  { id: 'hc', name: 'Habacuque', chapters: 3, testament: 'AT' },
+  { id: 'sf', name: 'Sofonias', chapters: 3, testament: 'AT' },
+  { id: 'ag', name: 'Ageu', chapters: 2, testament: 'AT' },
+  { id: 'zc', name: 'Zacarias', chapters: 14, testament: 'AT' },
+  { id: 'ml', name: 'Malaquias', chapters: 4, testament: 'AT' },
+  
+  { id: 'mt', name: 'Mateus', chapters: 28, testament: 'NT' },
+  { id: 'mc', name: 'Marcos', chapters: 16, testament: 'NT' },
+  { id: 'lc', name: 'Lucas', chapters: 24, testament: 'NT' },
+  { id: 'jo_nt', name: 'João', chapters: 21, testament: 'NT' },
+  { id: 'at', name: 'Atos', chapters: 28, testament: 'NT' },
+  { id: 'rm', name: 'Romanos', chapters: 16, testament: 'NT' },
+  { id: '1co', name: '1 Coríntios', chapters: 16, testament: 'NT' },
+  { id: '2co', name: '2 Coríntios', chapters: 13, testament: 'NT' },
+  { id: 'gl', name: 'Gálatas', chapters: 6, testament: 'NT' },
+  { id: 'ef', name: 'Efésios', chapters: 6, testament: 'NT' },
+  { id: 'fp', name: 'Filipenses', chapters: 4, testament: 'NT' },
+  { id: 'cl', name: 'Colossenses', chapters: 4, testament: 'NT' },
+  { id: '1ts', name: '1 Tessalonicenses', chapters: 5, testament: 'NT' },
+  { id: '2ts', name: '2 Tessalonicenses', chapters: 3, testament: 'NT' },
+  { id: '1tm', name: '1 Timóteo', chapters: 6, testament: 'NT' },
+  { id: '2tm', name: '2 Timóteo', chapters: 4, testament: 'NT' },
+  { id: 'tt', name: 'Tito', chapters: 3, testament: 'NT' },
+  { id: 'fm', name: 'Filemom', chapters: 1, testament: 'NT' },
+  { id: 'hb', name: 'Hebreus', chapters: 13, testament: 'NT' },
+  { id: 'tg', name: 'Tiago', chapters: 5, testament: 'NT' },
+  { id: '1pe', name: '1 Pedro', chapters: 5, testament: 'NT' },
+  { id: '2pe', name: '2 Pedro', chapters: 3, testament: 'NT' },
+  { id: '1jo', name: '1 João', chapters: 5, testament: 'NT' },
+  { id: '2jo', name: '2 João', chapters: 1, testament: 'NT' },
+  { id: '3jo', name: '3 João', chapters: 1, testament: 'NT' },
+  { id: 'jd', name: 'Judas', chapters: 1, testament: 'NT' },
+  { id: 'ap', name: 'Apocalipse', chapters: 22, testament: 'NT' }
+];
+
+function getAbsoluteChapter(bookId, chapter) {
+  let abs = 0;
+  for (const b of BIBLE_BOOKS) {
+    if (b.id === bookId) {
+      return abs + Math.min(parseInt(chapter)||1, b.chapters);
+    }
+    abs += b.chapters;
+  }
+  return abs;
+}
+
+function getBookAndChapterFromAbsolute(absChapter) {
+  let rem = parseInt(absChapter)||1;
+  if (rem < 1) rem = 1;
+  for (const b of BIBLE_BOOKS) {
+    if (rem <= b.chapters) {
+      return { bookId: b.id, bookName: b.name, chapter: rem };
+    }
+    rem -= b.chapters;
+  }
+  const lastBook = BIBLE_BOOKS[BIBLE_BOOKS.length - 1];
+  return { bookId: lastBook.id, bookName: lastBook.name, chapter: lastBook.chapters };
+}
 
 const App = {
   state: null,
@@ -782,7 +1003,7 @@ const App = {
     this.state.history[date][taskId] = {...this.getTaskDayData(taskId,date),...data};
   },
   getTaskGoalForDay(task, date) {
-    if (task.type!=='goal') return 0;
+    if (task.type!=='goal' && task.type!=='bible') return 0;
     
     // Retorna o goal original se houver registro no histórico para manter integridade das medalhas passadas
     const hist = this.getTaskDayData(task.id, date);
@@ -799,6 +1020,7 @@ const App = {
       const totalGoal=task.dailyGoals.reduce((a,b)=>a+b,0);
       return Math.max(0, totalGoal - totalDone);
     }
+    
     // Calcula progresso real acumulado antes de hoje para descontar overflow
     let actualBefore=0;
     for(let i=0;i<idx;i++){
@@ -853,7 +1075,7 @@ const App = {
     const prefix=`${year}-${pad(month)}-`;
     const daysInMonth=new Date(year,month,0).getDate();
     return this.state.tasks
-      .filter(t=>t.type==='goal')
+      .filter(t=>t.type==='goal' || t.type==='bible')
       .map(t=>{
         const counts={bronze:0,prata:0,ouro:0,platinum:0};
         for(let d=1;d<=daysInMonth;d++){
@@ -872,7 +1094,7 @@ const App = {
   },
   isTaskOverdue(task, date) {
     if (!task.active || task.deleted) return false;
-    if (task.type === 'goal') {
+    if (task.type === 'goal' || task.type === 'bible') {
       const totalDays = task.dailyGoals.length;
       const endDate = this.addDays(task.startDate, totalDays - 1);
       if (date > endDate) {
@@ -889,11 +1111,11 @@ const App = {
   },
   isTaskActiveOnDate(task, date) {
     if (!task.active || task.deleted) return false;
-    if (task.type === 'goal' && date === this.getToday()) {
+    if ((task.type === 'goal' || task.type === 'bible') && date === this.getToday()) {
       if (this.isTaskOverdue(task, date)) return true;
     }
     if (task.startDate && date < task.startDate) return false;
-    if (task.type==='goal') {
+    if (task.type==='goal' || task.type==='bible') {
       const idx=this.daysDiff(task.startDate,date);
       return idx>=0&&idx<task.dailyGoals.length;
     }
@@ -1373,7 +1595,78 @@ const App = {
           <div class="tap-hint">ℹ️ Ver detalhes e histórico</div>
         </div>
         <div class="task-right">
-          ${checked?`<button class="revert-btn" onclick="event.stopPropagation();App.revertTask('${task.id}','${date}')">↩ Reverter</button>`:hasWords?`<button class="log-btn" onclick="event.stopPropagation();App.openLogWords('${task.id}','${date}')">+ Palavras</button>`:''}
+          ${checked?`<button class="revert-btn" onclick="event.stopPropagation();App.revertTask('${task.id}','${date}')">↩ Reverter</button>`:hasWords?`<button class="log-btn" onclick="event.stopPropagation();App.openLogWords('${task.id}')">+ Palavras</button>`:''}
+        </div>
+      </div>`;
+    } else if (task.type === 'bible') {
+      const goal=this.getTaskGoalForDay(task,date),progress=data.progress||0;
+      const pct=goal>0?Math.min(100,Math.round((progress/goal)*100)):0;
+      const isFull=pct>=100 && (data.finishedTime || data.completed);
+      const idx=this.daysDiff(task.startDate,date);
+      const ftBadge=data.finishedTime&&pct>=100?`<span class="done-time-chip">✓ ${data.finishedTime}</span>`:'';
+      const timeSpentBadge=data.timeSpent&&isFull?`<span class="done-time-chip" style="background:rgba(139,124,246,.12);color:var(--accent2);border-color:rgba(139,124,246,.25)">⏱ ${data.timeSpent>=60?(Math.floor(data.timeSpent/60)+'h'+(data.timeSpent%60>0?data.timeSpent%60+'min':'')):data.timeSpent+'min'}</span>`:'';
+      
+      const startOffset=task.startOffset||0;
+      const totalBook=1189;
+      
+      let cumDaysBefore=0;
+      for(let i=0;i<idx;i++){
+        const d2=this.addDays(task.startDate,i);
+        const dd=this.getTaskDayData(task.id,d2);
+        cumDaysBefore+=(dd.progress||0);
+      }
+      
+      const absRangeStart=startOffset+cumDaysBefore+1;
+      const absRangeEnd=startOffset+cumDaysBefore+goal;
+      
+      let rangeLabel='';
+      if (goal > 0) {
+        const startBookInfo = getBookAndChapterFromAbsolute(absRangeStart);
+        const endBookInfo = getBookAndChapterFromAbsolute(absRangeEnd);
+        let rangeText = '';
+        if (startBookInfo.bookId === endBookInfo.bookId) {
+          rangeText = startBookInfo.chapter === endBookInfo.chapter
+            ? `${startBookInfo.bookName} ${startBookInfo.chapter}`
+            : `${startBookInfo.bookName} ${startBookInfo.chapter}–${endBookInfo.chapter}`;
+        } else {
+          rangeText = `${startBookInfo.bookName} ${startBookInfo.chapter} – ${endBookInfo.bookName} ${endBookInfo.chapter}`;
+        }
+        rangeLabel = `📖 ${rangeText}`;
+      } else {
+        rangeLabel = 'Nenhum capítulo hoje';
+      }
+      
+      const totalReadSoFar=startOffset+cumDaysBefore+progress;
+      const globalPct=Math.min(100,Math.round((totalReadSoFar/totalBook)*100));
+      const displayPct = isFull ? 100 : pct;
+      
+      const currentBookInfo = getBookAndChapterFromAbsolute(totalReadSoFar || 1);
+      const barLabel = `Lido até ${currentBookInfo.bookName} ${currentBookInfo.chapter} · ${totalReadSoFar}/${totalBook} caps`;
+      
+      const medal=this.getMedal(progress,goal);
+      const medalBadge=medal?`<span class="medal-badge ${medal.cls}">${medal.icon} ${medal.label}</span>`:'';
+      
+      return `<div class="task-card goal-card ${isFull?'done':''}">
+        <div class="task-body" onclick="App.openTaskDetail('${task.id}')" style="cursor:pointer">
+          <div class="task-name">${task.name}</div>
+          <div class="task-sub">
+            <span class="chip ${isFull?'green':'orange'}">Dia ${idx+1}/${task.dailyGoals.length}</span>
+            ${task.schedule==='fixed'?`<span class="task-time-badge">⏰ ${task.scheduledTime}</span>`:`<span class="task-time-badge">🔄 Flexível</span>`}
+            <span class="task-time-badge" style="background:var(--surface3)">${rangeLabel}</span>
+            ${medalBadge}${ftBadge}${timeSpentBadge}
+          </div>
+          <div class="goal-bar-wrap">
+            <div class="goal-bar-top">
+              <span>${progress} / ${goal} capítulos hoje</span>
+              <span style="color:var(--muted);font-size:10px">${barLabel} · <b style="color:var(--accent)">${displayPct}%</b></span>
+            </div>
+            <div class="goal-bar"><div class="goal-bar-fill ${displayPct>=100?'full':''}" style="width:${displayPct}%"></div></div>
+          </div>
+          <div class="tap-hint">ℹ️ Ver datas, calendário e atrasos</div>
+        </div>
+        <div class="task-right" style="display:flex;flex-direction:column;gap:4px">
+          ${!isFull?`<button class="log-btn" onclick="event.stopPropagation();App.openLogBible('${task.id}','${date}')">+ Registrar</button>`:''}
+          ${(isFull || progress > 0 || data.originalGoal !== undefined)?`<button class="revert-btn" onclick="event.stopPropagation();App.revertTask('${task.id}','${date}')">↩ Reverter</button>`:''}
         </div>
       </div>`;
     } else {
@@ -1424,15 +1717,12 @@ const App = {
       const barToggle=hasChapters?` onclick="event.stopPropagation();App.toggleBarMode('${task.id}')" style="cursor:pointer;user-select:none" title="Clique para alternar"`:'';
       const medal=this.getMedal(progress,goal);
       const medalBadge=medal?`<span class="medal-badge ${medal.cls}">${medal.icon} ${medal.label}</span>`:'';
-      const isOverdue=this.isTaskOverdue(task,date);
-      const overdueClass=isOverdue?'overdue-card':'';
-      const overdueBadge=isOverdue?`<span class="chip red" style="background:var(--red);color:#fff;font-weight:bold;box-shadow:0 0 6px rgba(255,107,107,0.4)">⚠️ Em Atraso</span>`:'';
 
-      return `<div class="task-card goal-card ${isFull?'done':''} ${overdueClass}">
+      return `<div class="task-card goal-card ${isFull?'done':''}">
         <div class="task-body" onclick="App.openTaskDetail('${task.id}')" style="cursor:pointer">
           <div class="task-name">${task.name}</div>
           <div class="task-sub">
-            ${isOverdue?overdueBadge:`<span class="chip ${isFull?'green':'orange'}">Dia ${idx+1}/${task.dailyGoals.length}</span>`}
+            <span class="chip ${isFull?'green':'orange'}">Dia ${idx+1}/${task.dailyGoals.length}</span>
             ${task.schedule==='fixed'?`<span class="task-time-badge">⏰ ${task.scheduledTime}</span>`:`<span class="task-time-badge">🔄 Flexível</span>`}
             ${task.goalUnit!=='min'?`<span class="task-time-badge" style="background:var(--surface3)">${rangeLabel} ${task.goalUnit}</span>`:''}
             ${medalBadge}${ftBadge}${timeSpentBadge}
@@ -1446,7 +1736,7 @@ const App = {
           </div>
           <div class="tap-hint">ℹ️ Ver datas, calendário e atrasos</div>
         </div>
-        <div class="task-right">
+        <div class="task-right" style="display:flex;flex-direction:column;gap:4px">
           ${!isFull?`<button class="log-btn" onclick="App.openLogProgress('${task.id}','${date}')">+ Registrar</button>`:''}
           ${(isFull || progress > 0 || data.originalGoal !== undefined)?`<button class="revert-btn" onclick="event.stopPropagation();App.revertTask('${task.id}','${date}')">↩ Reverter</button>`:''}
         </div>
@@ -1952,9 +2242,9 @@ renderManage() {
   // ===================== MODALS =====================
   renderModal() {
     const m=this.state.modal; if (!m) return '';
-    return {recalculate:()=>this.renderRecalculateModal(),addTask:()=>this.renderAddTaskModal(),logProgress:()=>this.renderLogProgressModal(),logWords:()=>this.renderLogWordsModal(),defineConversion:()=>this.renderDefineConversionModal(),suggestion:()=>this.renderSuggestionModal(),missedTask:()=>this.renderMissedTaskModal(),insights:()=>this.renderInsightsModal(),sync:()=>this.renderSyncModal(),pasteImport:()=>this.renderPasteImportModal(),gdriveSetup:()=>this.renderGdriveSetupModal(),finishTime:()=>this.renderFinishTimeModal(),taskDetail:()=>this.renderTaskDetailModal(),medalDetail:()=>this.renderMedalDetailModal()}[m.type]?.()??'';
+    return {addTask:()=>this.renderAddTaskModal(),logProgress:()=>this.renderLogProgressModal(),logBible:()=>this.renderLogBibleModal(),logWords:()=>this.renderLogWordsModal(),defineConversion:()=>this.renderDefineConversionModal(),suggestion:()=>this.renderSuggestionModal(),missedTask:()=>this.renderMissedTaskModal(),insights:()=>this.renderInsightsModal(),sync:()=>this.renderSyncModal(),pasteImport:()=>this.renderPasteImportModal(),gdriveSetup:()=>this.renderGdriveSetupModal(),finishTime:()=>this.renderFinishTimeModal(),taskDetail:()=>this.renderTaskDetailModal(),medalDetail:()=>this.renderMedalDetailModal(),recalculate:()=>this.renderRecalculateModal()}[m.type]?.()??'';
   },
-  closeModal(){this.state.modal=null;this.state.wizard=null;this.checkRecalculateBacklog();this.render();},
+  closeModal(){this.state.modal=null;this.state.wizard=null;this.render();},
 
   // ===================== FINISH TIME MODAL =====================
   renderFinishTimeModal() {
@@ -2022,27 +2312,28 @@ renderManage() {
     this.state.modal={type:'addTask'}; this.render();
   },
   renderAddTaskModal() {
-    const w=this.state.wizard, totalSteps=w.type==='goal'?3:(w.type==='simple'&&w.wordsEnabled&&w.wordsDistribution==='custom'&&parseInt(w.wordsDays)>0?3:2), isEdit=!!w.editId;
+    const w=this.state.wizard, totalSteps=(w.type==='goal'||w.type==='bible')?(w.distribution==='custom'?3:2):(w.type==='simple'&&w.wordsEnabled&&w.wordsDistribution==='custom'&&parseInt(w.wordsDays)>0?3:2), isEdit=!!w.editId;
     const steps=`<div class="wizard-steps">${Array.from({length:totalSteps},(_,i)=>`<div class="wizard-step ${i<w.step?'done':''}"></div>`).join('')}</div>`;
     let content='';
     if (w.step===1) {
       const dows=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
       content=`<div class="modal-title">${isEdit?'Editar tarefa':'Nova tarefa'}</div>
-        <div class="modal-sub">Passo 1: tipo, nome e data</div>
+        <div class="modal-sub">Passo 1: tipo e nome</div>
         <div class="form-group"><label class="form-label">Tipo</label>
           <div class="toggle-group">
             <button class="toggle-btn ${w.type==='simple'?'active':''}" onclick="App.setWizard('type','simple')">✅ Simples</button>
             <button class="toggle-btn ${w.type==='goal'?'active':''}" onclick="App.setWizard('type','goal')">🎯 Meta</button>
+            <button class="toggle-btn ${w.type==='bible'?'active':''}" onclick="App.setWizard('type','bible'); App.state.wizard.name='Leitura da Bíblia'; App.state.wizard.goalUnit='capítulos'; App.state.wizard.totalGoal=1189; App.state.wizard.startOffset=0; App.state.wizard.daysToComplete=365;">📖 Bíblia</button>
           </div>
         </div>
         <div class="form-group"><label class="form-label">Nome</label>
           <input class="form-input" id="wiz-name" placeholder="Ex: Meditar, Ler livro..." value="${w.name}" oninput="App.state.wizard.name=this.value">
         </div>
-        <div class="form-group"><label class="form-label">Data de início</label>
-          <input class="form-input" id="wiz-start-date" type="date" value="${w.startDate || this.getSelectedDate()}" onchange="App.state.wizard.startDate=this.value">
-        </div>
         <div class="form-group"><label class="form-label">Dias da semana</label>
           <div class="toggle-group">${dows.map((l,i)=>`<button class="toggle-btn ${w.daysOfWeek.includes(i)?'active':''}" onclick="App.toggleDow(${i})" style="font-size:12px;padding:7px 4px">${l}</button>`).join('')}</div>
+        </div>
+        <div class="form-group"><label class="form-label">📅 Data de Início</label>
+          <input class="form-input" type="date" value="${w.startDate || this.getSelectedDate()}" onchange="App.state.wizard.startDate=this.value">
         </div>
         ${w.type==='simple'?`
         <div class="form-group"><label class="form-label">⏱ Meta de tempo diário <span style="color:var(--muted);font-size:11px;font-weight:400;text-transform:none">(opcional)</span></label>
@@ -2085,6 +2376,41 @@ renderManage() {
         </div>`:''}
         <button class="btn-primary" onclick="App.wizardNext()">Continuar →</button>
         <button class="btn-secondary" onclick="App.closeModal()">Cancelar</button>`;
+    } else if (w.step===2&&w.type==='bible') {
+      const offset = parseInt(w.startOffset)||0;
+      const startPos = getBookAndChapterFromAbsolute(offset + 1);
+      const startBookId = w.bibleStartBook || startPos.bookId;
+      const startChapter = w.bibleStartChapter || startPos.chapter;
+      const currentBookObj = BIBLE_BOOKS.find(b => b.id === startBookId) || BIBLE_BOOKS[0];
+      const maxChaps = currentBookObj.chapters;
+      
+      content=`<div class="modal-title">Configurar meta bíblica</div>
+        <div class="modal-sub">Passo 2: ponto de partida e prazo</div>
+        <div class="form-group">
+          <label class="form-label">📍 Começar a ler em</label>
+          <div class="bible-sel-wrap">
+            <select id="wiz-bible-book" onchange="App.setWizardBibleBook(this.value)">
+              ${BIBLE_BOOKS.map(b => `<option value="${b.id}" ${b.id===startBookId?'selected':''}>${b.name}</option>`).join('')}
+            </select>
+            <select id="wiz-bible-chap" onchange="App.setWizardBibleChap(this.value)">
+              ${Array.from({length: maxChaps}, (_, i) => `<option value="${i+1}" ${i+1===parseInt(startChapter)?'selected':''}>Cap. ${i+1}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div class="form-group"><label class="form-label">📅 Prazo para concluir</label>
+          <div style="display:flex;align-items:center;gap:8px">
+            <input class="form-input" type="number" min="1" placeholder="Ex: 365" value="${w.daysToComplete||365}" oninput="App.state.wizard.daysToComplete=parseInt(this.value)||1" style="max-width:120px">
+            <span style="color:var(--muted);font-size:13px;font-weight:600">dias</span>
+          </div>
+        </div>
+        <div class="form-group"><label class="form-label">📊 Distribuição de capítulos</label>
+          <div class="toggle-group">
+            <button class="toggle-btn ${w.distribution==='equal'?'active':''}" onclick="App.setWizard('distribution','equal')">Igual por dia</button>
+            <button class="toggle-btn ${w.distribution==='custom'?'active':''}" onclick="App.setWizard('distribution','custom')">Personalizada</button>
+          </div>
+        </div>
+        <button class="btn-primary" onclick="App.wizardNext()">Continuar →</button>
+        <button class="btn-secondary" onclick="App.setWizardStep(1)">← Voltar</button>`;
     } else if (w.step===2&&w.type==='goal') {
       const hasOffset=(w.startOffset||0)>0;
       const total=parseInt(w.totalGoal)||0;
@@ -2134,7 +2460,7 @@ renderManage() {
           <div style="background:var(--surface2);border-radius:12px;padding:12px 14px;margin-bottom:10px">
             <label class="form-label" style="margin-bottom:6px">Parei em qual ${w.goalUnit}?</label>
             <input class="form-input" id="wiz-offset" type="number" min="1" max="${total-1||9999}" placeholder="Ex: 105"
-              value="${w.startOffset||''}" oninput="App.state.wizard.startOffset=parseInt(this.value)||0;App.refreshWizardOffsetDOM()">
+               value="${w.startOffset||''}" oninput="App.state.wizard.startOffset=parseInt(this.value)||0;App.refreshWizardOffsetDOM()">
             <div id="wiz-offset-preview" style="margin-top:8px;font-size:12px;color:var(--muted)${total>0&&offset>0?'':'display:none'}"">
               Livro: <b style="color:var(--text)">${total} ${w.goalUnit}</b> &nbsp;·&nbsp;
               Já lido: <b style="color:var(--accent2)" id="wiz-offset-lido">${offset} ${w.goalUnit}</b> &nbsp;·&nbsp;
@@ -2154,6 +2480,49 @@ renderManage() {
         </div>
         <button class="btn-primary" onclick="App.wizardNext()">Continuar →</button>
         <button class="btn-secondary" onclick="App.setWizardStep(1)">← Voltar</button>`;
+    } else if (w.step===3&&w.type==='bible'&&w.distribution==='custom') {
+      const total=1189;
+      const offset=parseInt(w.startOffset)||0;
+      const remaining=total-offset,days=parseInt(w.daysToComplete)||1;
+      if(w.dailyGoals.length!==days){const eq=Math.floor(remaining/days),rem=remaining-eq*(days-1);w.dailyGoals=Array.from({length:days},(_,i)=>i===days-1?rem:eq);}
+      const currentSum=w.dailyGoals.reduce((a,b)=>a+b,0),diff=currentSum-remaining;
+      const today=this.getToday(),dayNames=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+      
+      content=`<div class="modal-title">Distribuição de capítulos</div>
+        <div class="modal-sub">Passo 3: capítulos por dia</div>
+        <div class="dist-total ${Math.abs(diff)<=1?'ok':'over'}" id="dist-total-el">
+          ${Math.abs(diff)<=1?'✓ Total correto: '+currentSum+' capítulos':(diff>0?'▲ Excedendo: ':'▼ Faltando: ')+Math.abs(diff)+' capítulos'}
+        </div>
+        <div style="max-height: 280px; overflow-y: auto; background: var(--surface2); border-radius: 12px; padding: 10px 14px; margin-bottom: 16px;">
+        ${w.dailyGoals.map((g,i)=>{
+          const date=this.addDays(today,i);
+          const [yr,mo,da]=date.split('-').map(Number);
+          const lbl=i===0?'Hoje':dayNames[new Date(yr,mo-1,da).getDay()];
+          const absStart=offset+w.dailyGoals.slice(0,i).reduce((a,b)=>a+b,0)+1;
+          const absEnd=offset+w.dailyGoals.slice(0,i+1).reduce((a,b)=>a+b,0);
+          
+          let rangeText='';
+          if (absEnd >= absStart) {
+            const startBookInfo = getBookAndChapterFromAbsolute(absStart);
+            const endBookInfo = getBookAndChapterFromAbsolute(absEnd);
+            if (startBookInfo.bookId === endBookInfo.bookId) {
+              rangeText = startBookInfo.chapter === endBookInfo.chapter
+                ? `${startBookInfo.bookName} ${startBookInfo.chapter}`
+                : `${startBookInfo.bookName} ${startBookInfo.chapter}–${endBookInfo.chapter}`;
+            } else {
+              rangeText = `${startBookInfo.bookName} ${startBookInfo.chapter} – ${endBookInfo.bookName} ${endBookInfo.chapter}`;
+            }
+          } else {
+            rangeText = 'Nenhum';
+          }
+          
+          return `<div class="dist-day-row"><div class="dist-day-label">${lbl}</div>
+            <input class="dist-day-input" type="number" min="0" value="${g}" onchange="App.setDayGoal(${i},parseInt(this.value)||0)" style="max-width:80px">
+            <span style="font-size:11px;color:var(--muted);min-width:120px;text-align:right">${rangeText}</span></div>`;
+        }).join('')}
+        </div>
+        <button class="btn-primary" onclick="App.wizardNext()">Continuar →</button>
+        <button class="btn-secondary" onclick="App.setWizardStep(2)">← Voltar</button>`;
     } else if (w.step===3&&w.type==='goal'&&w.distribution==='custom') {
       const totalBook=parseInt(w.totalGoal)||0;
       const offset=parseInt(w.startOffset)||0;
@@ -2205,7 +2574,7 @@ renderManage() {
           <input class="form-input" type="time" value="${w.scheduledTime}" onchange="App.state.wizard.scheduledTime=this.value">
         </div>`:`<div style="background:var(--surface2);border-radius:12px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:var(--muted)">🔄 Flexível: pode ser feita a qualquer hora do dia.</div>`}
         <button class="btn-primary" onclick="App.wizardSave()">${isEdit?'💾 Salvar':'✨ Criar tarefa'}</button>
-        <button class="btn-secondary" onclick="App.setWizardStep(w.type==='goal'&&w.distribution==='custom'?3:w.type==='goal'?2:1)">← Voltar</button>`;
+        <button class="btn-secondary" onclick="App.setWizardStep((w.type==='goal'||w.type==='bible')&&w.distribution==='custom'?3:(w.type==='goal'||w.type==='bible')?2:1)">← Voltar</button>`;
     }
     return `<div class="overlay" onclick="if(event.target===this)App.closeModal()">
       <div class="modal"><div class="modal-handle"></div>${steps}${content}</div>
@@ -2295,14 +2664,34 @@ renderManage() {
     if(el){el.className=`dist-total ${Math.abs(diff)<=1?'ok':'over'}`;el.textContent=Math.abs(diff)<=1?'✓ Total correto: '+sum+' '+this.state.wizard.goalUnit:(diff>0?'▲ Excedendo: ':'▼ Faltando: ')+Math.abs(diff)+' '+this.state.wizard.goalUnit;}
   },
   setWizardStep(s){this.state.wizard.step=s;this.render();},
+  setWizardBibleBook(bookId) {
+    const w = this.state.wizard;
+    w.bibleStartBook = bookId;
+    w.bibleStartChapter = 1;
+    const newOffset = getAbsoluteChapter(bookId, 1) - 1;
+    w.startOffset = newOffset;
+    this.render();
+  },
+  setWizardBibleChap(chap) {
+    const w = this.state.wizard;
+    const bookId = w.bibleStartBook || BIBLE_BOOKS[0].id;
+    w.bibleStartChapter = parseInt(chap)||1;
+    const newOffset = getAbsoluteChapter(bookId, parseInt(chap)||1) - 1;
+    w.startOffset = newOffset;
+    this.render();
+  },
   wizardNext(){
     const w=this.state.wizard;
-    if(w.step===1){if(!w.name.trim()){this.showToast('Digite o nome','error');return;}if(!w.daysOfWeek.length){this.showToast('Selecione ao menos um dia','error');return;}w.step=w.type==='goal'?2:(w.wordsEnabled&&w.wordsDistribution==='custom'&&parseInt(w.wordsDays)>0&&parseInt(w.wordsTotal)>0?2:99);}
+    if(w.step===1){if(!w.name.trim()){this.showToast('Digite o nome','error');return;}if(!w.daysOfWeek.length){this.showToast('Selecione ao menos um dia','error');return;}w.step=(w.type==='goal'||w.type==='bible')?2:(w.wordsEnabled&&w.wordsDistribution==='custom'&&parseInt(w.wordsDays)>0&&parseInt(w.wordsTotal)>0?2:99);}
     else if(w.step===2&&w.type==='simple'){
       const remainingW=(parseInt(w.wordsTotal)||0)-(parseInt(w.wordsOffset)||0);
       const sum=w.wordsDailyGoals.reduce((a,b)=>a+b,0);
       if(Math.abs(sum-remainingW)>1){this.showToast(`Soma ${sum} ≠ restante ${remainingW}`,'error');return;}
       w.step=99;
+    }
+    else if(w.step===2&&w.type==='bible'){
+      const days=parseInt(w.daysToComplete)||365;
+      w.step=w.distribution==='custom'?3:99;
     }
     else if(w.step===2){
       if(!w.totalGoal||parseInt(w.totalGoal)<=0){this.showToast('Digite a quantidade total','error');return;}
@@ -2310,6 +2699,13 @@ renderManage() {
       if(offset>0&&offset>=parseInt(w.totalGoal)){this.showToast('A posição inicial deve ser menor que o total','error');return;}
       if(!w.daysToComplete||parseInt(w.daysToComplete)<=0){this.showToast('Digite o prazo em dias','error');return;}
       w.step=w.distribution==='custom'?3:99;
+    }
+    else if(w.step===3&&w.type==='bible'){
+      const offset=parseInt(w.startOffset)||0;
+      const total=1189-offset;
+      const sum=w.dailyGoals.reduce((a,b)=>a+b,0);
+      if(Math.abs(sum-total)>1){this.showToast(`Soma ${sum} ≠ restante ${total}`,'error');return;}
+      w.step=99;
     }
     else if(w.step===3){
       const offset=parseInt(w.startOffset)||0;
@@ -2324,9 +2720,9 @@ renderManage() {
     const w=this.state.wizard,today=this.getToday();
     let dailyGoals=[];
     const offset=parseInt(w.startOffset)||0;
-    if(w.type==='goal'){
-      const totalBook=parseInt(w.totalGoal);
-      const remaining=totalBook-offset; // pages left to read
+    if(w.type==='goal'||w.type==='bible'){
+      const totalBook=w.type==='bible'?1189:parseInt(w.totalGoal);
+      const remaining=totalBook-offset; // pages/chapters left to read
       const days=parseInt(w.daysToComplete);
       if(w.distribution==='custom'&&w.dailyGoals.length===days){
         dailyGoals=w.dailyGoals.map(Number);
@@ -2339,9 +2735,9 @@ renderManage() {
       const task=this.state.tasks.find(t=>t.id===w.editId);
       if(task){
         Object.assign(task,{name:w.name.trim(),type:w.type,schedule:w.schedule,scheduledTime:w.schedule==='fixed'?w.scheduledTime:null,daysOfWeek:w.daysOfWeek,startDate:w.startDate||task.startDate||today});
-        if(w.type==='goal'){          Object.assign(task,{goalUnit:w.goalUnit,dailyGoals,startDate:w.startDate||task.startDate||today,totalBook:parseInt(w.totalGoal),startOffset:offset});
+        if(w.type==='goal'||w.type==='bible'){          Object.assign(task,{goalUnit:w.goalUnit,dailyGoals,startDate:w.startDate||task.startDate||today,totalBook:w.type==='bible'?1189:parseInt(w.totalGoal),startOffset:offset});
           // Salva chapterPages e monta unitConversions para conversão por página
-          if(w.chapterPages&&w.chapterPages.length>0&&parseInt(w.numChapters)>0){
+          if(w.type==='goal'&&w.chapterPages&&w.chapterPages.length>0&&parseInt(w.numChapters)>0){
             const cp=w.chapterPages.map(v=>parseInt(v)||0);
             task.chapterPages=cp;
             const filled=cp.filter(v=>v>0);
@@ -2365,10 +2761,10 @@ renderManage() {
       }
     } else {
       const task={id:this.uid(),name:w.name.trim(),type:w.type,active:true,schedule:w.schedule,scheduledTime:w.schedule==='fixed'?w.scheduledTime:null,daysOfWeek:w.daysOfWeek,startDate:w.startDate||today};
-      if(w.type==='goal'){
-        Object.assign(task,{goalUnit:w.goalUnit,dailyGoals,startDate:w.startDate||today,totalBook:parseInt(w.totalGoal),startOffset:offset});
+      if(w.type==='goal'||w.type==='bible'){
+        Object.assign(task,{goalUnit:w.goalUnit,dailyGoals,startDate:w.startDate||today,totalBook:w.type==='bible'?1189:parseInt(w.totalGoal),startOffset:offset});
         // Salva chapterPages e monta unitConversions para conversão por página
-        if(w.chapterPages&&w.chapterPages.length>0&&parseInt(w.numChapters)>0){
+        if(w.type==='goal'&&w.chapterPages&&w.chapterPages.length>0&&parseInt(w.numChapters)>0){
           const cp=w.chapterPages.map(v=>parseInt(v)||0);
           task.chapterPages=cp; // página inicial de cada unidade (cap, versículo etc)
           // Monta mapa página→unidade para uso no registro
@@ -2403,29 +2799,27 @@ renderManage() {
   },
 
   // ===================== LOG PROGRESS =====================
-  openLogWords(taskId, date){
+  openLogWords(taskId){
     const task=this.state.tasks.find(t=>t.id===taskId); if(!task)return;
-    const targetDate=date||this.getToday();
-    const data=this.getTaskDayData(task.id,targetDate);
-    this.state.modal={type:'logWords',taskId,logAmount:data.wordsProgress||0,targetDate};
+    const today=this.getToday(),data=this.getTaskDayData(task.id,today);
+    this.state.modal={type:'logWords',taskId,logAmount:data.wordsProgress||0};
     this.render();
   },
   renderLogWordsModal(){
     const m=this.state.modal,task=this.state.tasks.find(t=>t.id===m.taskId); if(!task)return'';
-    const targetDate=m.targetDate||this.getToday();
-    const goal=this.getWordsGoalForDay(task,targetDate);
-    const data=this.getTaskDayData(task.id,targetDate),current=data.wordsProgress||0;
-    const totalDone=this.calcWordsCumulative(task,targetDate);
+    const today=this.getToday(),goal=this.getWordsGoalForDay(task,today);
+    const data=this.getTaskDayData(task.id,today),current=data.wordsProgress||0;
+    const totalDone=this.calcWordsCumulative(task,today);
     return `<div class="overlay center" onclick="if(event.target===this)App.closeModal()">
       <div class="modal card-modal">
         <div class="modal-handle"></div>
         <div class="modal-title">📝 Registrar palavras</div>
         <div class="modal-sub">${task.name}</div>
         <div style="background:var(--surface2);border-radius:12px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:var(--muted)">
-          Meta: <b style="color:var(--text)">${goal} palavras</b> · Feitas no dia: <b style="color:var(--accent)">${current}</b> · Total: <b style="color:var(--accent2)">${totalDone}/${task.wordsTotal}</b>
+          Meta hoje: <b style="color:var(--text)">${goal} palavras</b> · Feitas hoje: <b style="color:var(--accent)">${current}</b> · Total: <b style="color:var(--accent2)">${totalDone}/${task.wordsTotal}</b>
         </div>
         <div class="form-group">
-          <label class="form-label">Palavras estudadas no dia</label>
+          <label class="form-label">Palavras estudadas hoje</label>
           <input class="form-input" id="log-words-input" type="number" min="0" value="${current}" style="font-size:24px;font-weight:700;text-align:center">
         </div>
         <button class="btn-primary" onclick="App.confirmLogWords()">✓ Salvar</button>
@@ -2437,11 +2831,123 @@ renderManage() {
     const m=this.state.modal,task=this.state.tasks.find(t=>t.id===m.taskId); if(!task)return;
     const el=document.getElementById('log-words-input');
     const val=parseInt(el?el.value:0)||0;
-    const targetDate=m.targetDate||this.getToday();
-    this.setTaskDayData(task.id,targetDate,{wordsProgress:val});
+    const today=this.getToday();
+    this.setTaskDayData(task.id,today,{wordsProgress:val});
     this.save();this.closeModal();this.render();
-    const goal=this.getWordsGoalForDay(task,targetDate);
+    const goal=this.getWordsGoalForDay(task,today);
     this.showToast(`📝 ${val}/${goal} palavras`,'success');
+  },
+  openLogBible(taskId, date) {
+    const task=this.state.tasks.find(t=>t.id===taskId); if(!task)return;
+    const targetDate=date||this.getToday();
+    const data=this.getTaskDayData(task.id,targetDate);
+    const startOffset=task.startOffset||0;
+    const targetIdx=this.daysDiff(task.startDate,targetDate);
+    let cumDaysBefore=0;
+    for(let i=0;i<targetIdx;i++){
+      const d=this.addDays(task.startDate,i);
+      const dd=this.getTaskDayData(task.id,d);
+      cumDaysBefore+=(dd.progress||0);
+    }
+    const todayProgress=data.progress||0;
+    const totalReadSoFar=startOffset+cumDaysBefore+todayProgress;
+    
+    const pos = getBookAndChapterFromAbsolute(totalReadSoFar || 1);
+    this.state.modal={
+      type:'logBible',
+      taskId,
+      cumDoneBefore: startOffset + cumDaysBefore,
+      currentPosition: totalReadSoFar,
+      selectedBookId: pos.bookId,
+      selectedChapter: pos.chapter,
+      targetDate
+    };
+    this.render();
+  },
+  renderLogBibleModal() {
+    const m=this.state.modal,task=this.state.tasks.find(t=>t.id===m.taskId); if(!task)return'';
+    const targetDate=m.targetDate||this.getToday();
+    const goal=this.getTaskGoalForDay(task,targetDate);
+    
+    const selectedBookId = m.selectedBookId || BIBLE_BOOKS[0].id;
+    const selectedChapter = m.selectedChapter || 1;
+    const currentBookObj = BIBLE_BOOKS.find(b => b.id === selectedBookId) || BIBLE_BOOKS[0];
+    const maxChaps = currentBookObj.chapters;
+    
+    const absoluteSelected = getAbsoluteChapter(selectedBookId, selectedChapter);
+    const prevPosition = m.cumDoneBefore || 0;
+    const chaptersRead = Math.max(0, absoluteSelected - prevPosition);
+    
+    return `<div class="overlay" onclick="if(event.target===this)App.closeModal()">
+      <div class="modal">
+        <div class="modal-handle"></div>
+        <div class="modal-title">Marcar como lido</div>
+        <div class="modal-sub">${task.name}</div>
+        
+        <div style="background:var(--surface2);border-radius:12px;padding:12px 14px;margin-bottom:16px">
+          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px"><span style="color:var(--muted)">Meta no dia</span><b>${goal} capítulos</b></div>
+          <div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--muted)">Último lido</span><b style="color:var(--accent)">${getBookAndChapterFromAbsolute(prevPosition).bookName} ${getBookAndChapterFromAbsolute(prevPosition).chapter}</b></div>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Marcar como lido até</label>
+          <div class="bible-sel-wrap">
+            <select id="log-bible-book" onchange="App.setLogBibleBook(this.value)">
+              ${BIBLE_BOOKS.map(b => `<option value="${b.id}" ${b.id===selectedBookId?'selected':''}>${b.name}</option>`).join('')}
+            </select>
+            <select id="log-bible-chap" onchange="App.setLogBibleChap(this.value)">
+              ${Array.from({length: maxChaps}, (_, i) => `<option value="${i+1}" ${i+1===parseInt(selectedChapter)?'selected':''}>Cap. ${i+1}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        
+        <div style="margin-top:8px;background:color-mix(in srgb,var(--accent) 10%,transparent);border:1px solid color-mix(in srgb,var(--accent) 20%,transparent);border-radius:10px;padding:8px 12px;font-size:12px;color:var(--accent);margin-bottom:16px">
+          ≈ <b>+${chaptersRead} capítulos</b> lidos
+        </div>
+        
+        <button class="btn-primary" onclick="App.confirmLogBible()">✓ Confirmar</button>
+        <button class="btn-secondary" onclick="App.closeModal()">Cancelar</button>
+      </div>
+    </div>`;
+  },
+  setLogBibleBook(bookId) {
+    const m = this.state.modal;
+    m.selectedBookId = bookId;
+    m.selectedChapter = 1;
+    this.render();
+  },
+  setLogBibleChap(chap) {
+    const m = this.state.modal;
+    m.selectedChapter = parseInt(chap)||1;
+    this.render();
+  },
+  confirmLogBible() {
+    const m=this.state.modal,task=this.state.tasks.find(t=>t.id===m.taskId); if(!task)return;
+    const targetDate=m.targetDate||this.getToday();
+    const goal=this.getTaskGoalForDay(task,targetDate);
+    
+    const selectedBookId = m.selectedBookId || BIBLE_BOOKS[0].id;
+    const selectedChapter = m.selectedChapter || 1;
+    
+    const absoluteSelected = getAbsoluteChapter(selectedBookId, selectedChapter);
+    const cumDoneBefore = m.cumDoneBefore || 0;
+    
+    const newProgressChapters = Math.max(0, absoluteSelected - cumDoneBefore);
+    
+    this.setTaskDayData(task.id, targetDate, {progress: newProgressChapters});
+    this.save();
+    
+    const isFull = newProgressChapters >= goal;
+    if (isFull && !this.getTaskDayData(task.id, targetDate).finishedTime) {
+      this.closeModal();
+      this.promptFinishTime(task.id, targetDate);
+    } else {
+      this.closeModal();
+      this.render();
+    }
+    
+    const curBookInfo = getBookAndChapterFromAbsolute(absoluteSelected);
+    this.showToast(`✓ Lido até ${curBookInfo.bookName} ${curBookInfo.chapter} (+${newProgressChapters} caps)`, 'success');
   },
   openLogProgress(taskId, date){    const task=this.state.tasks.find(t=>t.id===taskId); if(!task)return;
     const targetDate=date||this.getToday();
@@ -2456,7 +2962,7 @@ renderManage() {
       cumDaysBefore+=(dd.progress||0);
     }
     const todayProgress=data.progress||0;
-    // absolutePosition = startOffset + days done + day's progress
+    // absolutePosition = startOffset + days done + today's progress
     const currentPosition=startOffset+cumDaysBefore+todayProgress;
     // cumDoneBefore in absolute terms = startOffset + cumDaysBefore
     const cumDoneBefore=startOffset+cumDaysBefore;
@@ -2465,8 +2971,7 @@ renderManage() {
   },
  renderLogProgressModal(){
   const m=this.state.modal,task=this.state.tasks.find(t=>t.id===m.taskId); if(!task)return'';
-  const targetDate=m.targetDate||this.getToday();
-  const goal=this.getTaskGoalForDay(task,targetDate);
+  const targetDate=m.targetDate||this.getToday(),goal=this.getTaskGoalForDay(task,targetDate);
   const startOffset=task.startOffset||0;
   const totalBook=task.totalBook||task.dailyGoals.reduce((a,b)=>a+b,0)+startOffset;
   const startOfToday=m.cumDoneBefore||0;
@@ -2492,7 +2997,7 @@ renderManage() {
       <div class="modal-sub">${task.name}</div>
 
       <div style="background:var(--surface2);border-radius:12px;padding:12px 14px;margin-bottom:16px">
-        <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px"><span style="color:var(--muted)">Meta no dia</span><b>${goal} ${task.goalUnit}</b></div>
+        <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px"><span style="color:var(--muted)">Meta hoje</span><b>${goal} ${task.goalUnit}</b></div>
         <div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--muted)">Posição atual</span><b style="color:var(--accent)">${totalReadSoFar} / ${totalBook} ${task.goalUnit}</b></div>
       </div>
 
@@ -2524,7 +3029,7 @@ renderManage() {
         ${noConv?`
           <div style="margin-top:8px;background:rgba(139,124,246,.1);border:1px solid rgba(139,124,246,.2);border-radius:10px;padding:8px 12px;font-size:12px;color:var(--accent2)">
             ⚠️ Taxa de conversão não definida. Será registrado apenas como +${inputVal||'?'} ${selectedUnit} (sem converter para ${task.goalUnit}).
-            <button onclick="App.openDefineConversion('${task.id}','${selectedUnit}')" style="display:block;margin-top:6px;background:var(--surface3);border:none;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;color:var(--text);cursor:pointer">Definir conversão agora</button>
+            <button onclick="App.openDefineConversion('${task.id}','${selectedUnit}','${targetDate}')" style="display:block;margin-top:6px;background:var(--surface3);border:none;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;color:var(--text);cursor:pointer">Definir conversão agora</button>
           </div>`:''}
       </div>
 
@@ -2676,9 +3181,8 @@ renderManage() {
   },
 
   // Abre modal para definir taxa de conversão de uma unidade alternativa
-  openDefineConversion(taskId,unit){
-    const targetDate=(this.state.modal&&this.state.modal.targetDate)||this.getToday();
-    this.state.modal={type:'defineConversion',taskId,unit,targetDate};
+  openDefineConversion(taskId,unit,date){
+    this.state.modal={type:'defineConversion',taskId,unit,targetDate:date};
     this.render();
   },
   renderDefineConversionModal(){
@@ -2696,8 +3200,8 @@ renderManage() {
           <label class="form-label">1 ${m.unit} = quantos(as) ${task.goalUnit}?</label>
           <input class="form-input" id="conv-rate-input" type="number" min="0.1" step="0.1" placeholder="ex: 8" value="${existing}" style="font-size:20px;font-weight:700;text-align:center">
         </div>
-        <button class="btn-primary" onclick="App.saveConversionRate('${task.id}','${m.unit}')">💾 Salvar</button>
-        <button class="btn-secondary" onclick="App.openLogProgress('${task.id}','${targetDate}')">← Voltar</button>
+        <button class="btn-primary" onclick="App.saveConversionRate('${taskId}','${m.unit}')">💾 Salvar</button>
+        <button class="btn-secondary" onclick="App.openLogProgress('${taskId}','${targetDate}')">← Voltar</button>
       </div>
     </div>`;
   },
@@ -2710,8 +3214,7 @@ renderManage() {
     task.unitConversions[unit]=rate;
     this.save();
     this.showToast(`✓ 1 ${unit} = ${rate} ${task.goalUnit}`,'success');
-    const targetDate=(this.state.modal&&this.state.modal.targetDate)||this.getToday();
-    this.openLogProgress(taskId,targetDate);
+    this.openLogProgress(taskId, this.state.modal.targetDate);
   },
 
   // ===================== TASK DETAIL =====================
@@ -2725,7 +3228,7 @@ renderManage() {
     const m=this.state.modal,task=this.state.tasks.find(t=>t.id===m.taskId);
     if(!task)return'';
     const today=this.getToday();
-    return task.type==='goal'?this.renderGoalDetail(task,today):this.renderSimpleDetail(task,today);
+    return (task.type==='goal'||task.type==='bible')?this.renderGoalDetail(task,today):this.renderSimpleDetail(task,today);
   },
 
   renderGoalDetail(task,today){
@@ -2742,13 +3245,8 @@ renderManage() {
       const date=this.addDays(task.startDate,i);
       const data=this.getTaskDayData(task.id,date);
       const progress=data.progress||0;
-      
-      // Para estatísticas de progresso acumulado, usamos o goal planejado atual (g)
       taskGoalSum+=g; totalDone+=Math.min(g,progress);
-      
-      // Para visualização de cada dia no calendário, priorizamos o goal original histórico
       const goal = data.originalGoal !== undefined ? data.originalGoal : g;
-      
       const isPast=date<today,isToday=date===today,isFuture=date>today;
       let status='future';
       if(isFuture)status='future';
@@ -2778,8 +3276,8 @@ renderManage() {
       <div class="modal" style="padding-bottom:48px">
         <div class="modal-handle"></div>
         <div class="detail-header">
-          <div class="detail-icon">🎯</div>
-          <div><div class="detail-title">${task.name}</div><span class="detail-type-badge goal">Meta</span></div>
+          <div class="detail-icon">${task.type==='bible'?'📖':'🎯'}</div>
+          <div><div class="detail-title">${task.name}</div><span class="detail-type-badge ${task.type==='bible'?'lilas':'goal'}">${task.type==='bible'?'Bíblia':'Meta'}</span></div>
         </div>
 
         <div class="detail-meta-row">
@@ -2799,12 +3297,12 @@ renderManage() {
 
         <div class="detail-meta-row">
           <div class="detail-meta-box">
-            <div class="detail-meta-label">📖 Total do livro</div>
-            <div class="detail-meta-val">${totalBook} ${task.goalUnit}</div>
+            <div class="detail-meta-label">${task.type==='bible'?'📖 Total da Bíblia':'📖 Total do livro'}</div>
+            <div class="detail-meta-val">${task.type==='bible'?'1189 capítulos':`${totalBook} ${task.goalUnit}`}</div>
           </div>
           <div class="detail-meta-box">
             <div class="detail-meta-label">✅ Lido no total</div>
-            <div class="detail-meta-val green">${totalReadSoFar} ${task.goalUnit}</div>
+            <div class="detail-meta-val green">${task.type==='bible'?`${getBookAndChapterFromAbsolute(totalReadSoFar).bookName} ${getBookAndChapterFromAbsolute(totalReadSoFar).chapter}`:`${totalReadSoFar} ${task.goalUnit}`}</div>
           </div>
           <div class="detail-meta-box">
             <div class="detail-meta-label">⚠️ Atrasos</div>
@@ -2813,7 +3311,9 @@ renderManage() {
         </div>
 
         ${startOffset>0?`<div style="background:rgba(139,124,246,.1);border:1px solid rgba(139,124,246,.2);border-radius:10px;padding:10px 14px;font-size:12px;color:var(--accent2);margin-bottom:14px">
-          📍 Iniciado na ${task.goalUnit} <b>${startOffset+1}</b> — ${startOffset} ${task.goalUnit} já lidas antes de cadastrar
+          ${task.type==='bible'
+            ? `📍 Iniciado em <b>${getBookAndChapterFromAbsolute(startOffset+1).bookName} ${getBookAndChapterFromAbsolute(startOffset+1).chapter}</b> — ${startOffset} capítulos já lidos antes de cadastrar`
+            : `📍 Iniciado na ${task.goalUnit} <b>${startOffset+1}</b> — ${startOffset} ${task.goalUnit} já lidas antes de cadastrar`}
         </div>`:''}
 
         <div style="margin-bottom:18px">
@@ -3017,275 +3517,6 @@ renderManage() {
       }
     });
   },
-
-  applyAutoRecalculateBackground(taskId, yesterday, backlog) {
-    const task = this.state.tasks.find(t => t.id === taskId);
-    if (!task) return;
-    const yesterdayIdx = this.daysDiff(task.startDate, yesterday);
-    const today = this.getToday();
-    const todayIdx = this.daysDiff(task.startDate, today);
-    if (yesterdayIdx >= 0 && yesterdayIdx < task.dailyGoals.length) {
-      const yesterdayGoal = task.dailyGoals[yesterdayIdx];
-      const yesterdayProgress = this.getTaskDayData(task.id, yesterday).progress || 0;
-      this.setTaskDayData(task.id, yesterday, { 
-        originalGoal: yesterdayGoal, 
-        preRecalcGoals: [...task.dailyGoals] 
-      });
-      task.dailyGoals[yesterdayIdx] = yesterdayProgress;
-      if (todayIdx >= 0 && todayIdx < task.dailyGoals.length) {
-        task.dailyGoals[todayIdx] += backlog;
-      }
-      localStorage.setItem(`foco_recalc_${task.id}_${yesterday}`, '1');
-      this.save();
-    }
-  },
-
-  checkRecalculateBacklog() {
-    const today = this.getToday();
-    const yesterday = this.addDays(today, -1);
-    
-    this.state.tasks.forEach(task => {
-      if (task.type !== 'goal' || task.deleted || !task.active) return;
-      
-      const yesterdayIdx = this.daysDiff(task.startDate, yesterday);
-      const todayIdx = this.daysDiff(task.startDate, today);
-      
-      if (yesterdayIdx >= 0 && yesterdayIdx < task.dailyGoals.length) {
-        if (todayIdx >= 0 && todayIdx < task.dailyGoals.length) {
-          const yesterdayProgress = this.getTaskDayData(task.id, yesterday).progress || 0;
-          const yesterdayGoal = task.dailyGoals[yesterdayIdx];
-          
-          if (yesterdayProgress < yesterdayGoal) {
-            const key = `foco_recalc_${task.id}_${yesterday}`;
-            if (!localStorage.getItem(key)) {
-              // Silently auto-recalculate in background!
-              this.applyAutoRecalculateBackground(task.id, yesterday, yesterdayGoal - yesterdayProgress);
-            }
-          }
-        }
-      }
-    });
-  },
-
-  triggerBacklogCheckManual() {
-    const today = this.getToday();
-    const yesterday = this.addDays(today, -1);
-    let foundTask = null;
-    let foundBacklog = 0;
-    let yesterdayIdx = -1;
-
-    for (let task of this.state.tasks) {
-      if (task.type !== 'goal' || task.deleted || !task.active) continue;
-      const idx = this.daysDiff(task.startDate, yesterday);
-      if (idx >= 0 && idx < task.dailyGoals.length) {
-        const d = this.getTaskDayData(task.id, yesterday);
-        if (d.originalGoal !== undefined && d.preRecalcGoals) {
-          // Revert temporarily in memory to allow manual reconfiguration
-          task.dailyGoals = [...d.preRecalcGoals];
-          const origGoal = d.originalGoal;
-          const prog = d.progress || 0;
-          foundTask = task;
-          foundBacklog = origGoal - prog;
-          yesterdayIdx = idx;
-          localStorage.removeItem(`foco_recalc_${task.id}_${yesterday}`);
-          delete d.originalGoal;
-          delete d.preRecalcGoals;
-          break;
-        } else {
-          const prog = d.progress || 0;
-          const goal = task.dailyGoals[idx];
-          if (prog < goal) {
-            foundTask = task;
-            foundBacklog = goal - prog;
-            yesterdayIdx = idx;
-            break;
-          }
-        }
-      }
-    }
-
-    if (foundTask && foundBacklog > 0) {
-      this.state.modal = {
-        type: 'recalculate',
-        taskId: foundTask.id,
-        yesterday: yesterday,
-        yesterdayIdx: yesterdayIdx,
-        backlog: foundBacklog
-      };
-      this.render();
-    } else {
-      this.showToast('✅ Nenhuma tarefa atrasada!', 'info');
-    }
-  },
-
-  applyAutoRecalculate(taskId, yesterday, backlog) {
-    const task = this.state.tasks.find(t => t.id === taskId);
-    if (!task) return;
-    
-    const yesterdayIdx = this.daysDiff(task.startDate, yesterday);
-    const today = this.getToday();
-    const todayIdx = this.daysDiff(task.startDate, today);
-    
-    if (yesterdayIdx >= 0 && yesterdayIdx < task.dailyGoals.length) {
-      const yesterdayProgress = this.getTaskDayData(task.id, yesterday).progress || 0;
-      const yesterdayGoal = task.dailyGoals[yesterdayIdx];
-      // Preserva a meta original e a cópia das metas diárias antes de modificar
-      this.setTaskDayData(task.id, yesterday, { 
-        originalGoal: yesterdayGoal, 
-        preRecalcGoals: [...task.dailyGoals] 
-      });
-      task.dailyGoals[yesterdayIdx] = yesterdayProgress;
-      
-      if (todayIdx >= 0 && todayIdx < task.dailyGoals.length) {
-        task.dailyGoals[todayIdx] += backlog;
-      }
-      
-      localStorage.setItem(`foco_recalc_${task.id}_${yesterday}`, '1');
-      this.save();
-      this.closeModal();
-      this.render();
-      this.showToast('⚡ Meta recalculada! O atraso foi somado a hoje.', 'success');
-    }
-  },
-
-  applyManualRecalculate(taskId, yesterday) {
-    const task = this.state.tasks.find(t => t.id === taskId);
-    if (!task) return;
-    
-    const m = this.state.modal;
-    if (!m || !m.adjustments) return;
-    
-    const yesterdayIdx = this.daysDiff(task.startDate, yesterday);
-    const today = this.getToday();
-    const todayIdx = this.daysDiff(task.startDate, today);
-    
-    if (yesterdayIdx >= 0 && yesterdayIdx < task.dailyGoals.length) {
-      const yesterdayProgress = this.getTaskDayData(task.id, yesterday).progress || 0;
-      const yesterdayGoal = task.dailyGoals[yesterdayIdx];
-      // Preserva a meta original e a cópia das metas diárias antes de modificar
-      this.setTaskDayData(task.id, yesterday, { 
-        originalGoal: yesterdayGoal, 
-        preRecalcGoals: [...task.dailyGoals] 
-      });
-      task.dailyGoals[yesterdayIdx] = yesterdayProgress;
-      
-      m.adjustments.forEach((adj, idx) => {
-        const targetIdx = todayIdx + idx;
-        if (targetIdx < task.dailyGoals.length) {
-          task.dailyGoals[targetIdx] += adj;
-        }
-      });
-      
-      localStorage.setItem(`foco_recalc_${task.id}_${yesterday}`, '1');
-      this.save();
-      this.closeModal();
-      this.render();
-      this.showToast('✏️ Metas redistribuídas com sucesso!', 'success');
-    }
-  },
-
-  renderRecalculateModal() {
-    const m = this.state.modal;
-    const task = this.state.tasks.find(t => t.id === m.taskId);
-    if (!task) return '';
-
-    const today = this.getToday();
-    const todayIdx = this.daysDiff(task.startDate, today);
-
-    if (m.subView === 'manual') {
-      if (!m.adjustments) {
-        m.adjustments = Array(task.dailyGoals.length - todayIdx).fill(0);
-      }
-
-      const currentSum = m.adjustments.reduce((a, b) => a + b, 0);
-      const diff = m.backlog - currentSum;
-
-      let valMessage = '';
-      let isValid = false;
-      if (diff === 0) {
-        valMessage = `<div style="color:var(--green);font-weight:600;font-size:13px;margin-bottom:12px;text-align:center">✅ Distribuição perfeita! Total alocado com sucesso.</div>`;
-        isValid = true;
-      } else if (diff > 0) {
-        valMessage = `<div style="color:var(--orange);font-weight:600;font-size:13px;margin-bottom:12px;text-align:center">⚠️ Faltando alocar: ${diff} ${task.goalUnit}</div>`;
-      } else {
-        valMessage = `<div style="color:var(--red);font-weight:600;font-size:13px;margin-bottom:12px;text-align:center">❌ Excedeu o atraso por: ${Math.abs(diff)} ${task.goalUnit}</div>`;
-      }
-
-      const dayNames = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
-
-      const rows = m.adjustments.map((g, idx) => {
-        const targetIdx = todayIdx + idx;
-        const date = this.addDays(today, idx);
-        const [yr, mo, da] = date.split('-').map(Number);
-        const lbl = idx === 0 ? 'Hoje' : dayNames[new Date(yr, mo - 1, da).getDay()];
-        const originalGoal = task.dailyGoals[targetIdx];
-        const newGoal = originalGoal + g;
-
-        return `<div class="dist-day-row" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;background:var(--surface2);border-radius:10px;padding:8px 12px">
-          <div style="flex:1">
-            <div style="font-size:13px;font-weight:700">${lbl}</div>
-            <div style="font-size:11px;color:var(--muted)">Original: ${originalGoal} · <b style="color:var(--accent)">Novo: ${newGoal}</b></div>
-          </div>
-          <div style="display:flex;align-items:center;gap:6px">
-            <span style="font-weight:bold;color:var(--accent)">+</span>
-            <input class="dist-day-input" type="number" min="0" value="${g}" 
-              oninput="App.state.modal.adjustments[${idx}] = parseInt(this.value) || 0; App.render()" 
-              style="width:70px;background:var(--surface3);border:1px solid var(--border);border-radius:6px;padding:6px;color:var(--text);font-family:var(--font);font-size:14px;font-weight:600;text-align:center">
-          </div>
-        </div>`;
-      }).join('');
-
-      return `<div class="overlay center">
-        <div class="modal card-modal" style="max-width:440px">
-          <div class="modal-title" style="text-align:center">Ajustar Manualmente</div>
-          <div class="modal-sub" style="text-align:center;margin-bottom:16px">Distribuir o atraso de <b style="color:var(--red)">${m.backlog} ${task.goalUnit}</b> nos dias restantes</div>
-
-          <div style="max-height:280px;overflow-y:auto;margin-bottom:16px;padding-right:4px">
-            ${rows}
-          </div>
-
-          ${valMessage}
-
-          <div style="display:flex;gap:10px">
-            <button class="btn-secondary" onclick="App.state.modal.subView=null; App.render()" style="flex:1">Voltar</button>
-            <button class="btn-primary" onclick="App.applyManualRecalculate('${task.id}', '${m.yesterday}')" ${!isValid?'disabled style="opacity:0.5;cursor:not-allowed"':''} style="flex:1">Confirmar</button>
-          </div>
-        </div>
-      </div>`;
-    }
-
-    return `<div class="overlay center">
-      <div class="modal card-modal" style="max-width:440px">
-        <div style="font-size:44px;text-align:center;margin-bottom:12px">⚡</div>
-        <div class="modal-title" style="text-align:center;margin-bottom:6px">Atraso na Meta Ontem!</div>
-        <div class="modal-sub" style="text-align:center;margin-bottom:20px;line-height:1.4">
-          Ontem na meta <b>${task.name}</b> você realizou <b style="color:var(--accent2)">${this.getTaskDayData(task.id, m.yesterday).progress || 0}</b> de <b style="color:var(--accent)">${task.dailyGoals[m.yesterdayIdx]} ${task.goalUnit}</b>.<br>
-          Como deseja gerenciar o atraso de <b style="color:var(--red)">${m.backlog} ${task.goalUnit}</b>?
-        </div>
-
-        <div class="option-list" style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px">
-          <button class="option-btn" onclick="App.applyAutoRecalculate('${task.id}', '${m.yesterday}', ${m.backlog})" style="display:flex;align-items:flex-start;text-align:left;padding:14px;border:1px solid rgba(139,124,246,.25);background:rgba(139,124,246,.03)">
-            <span class="opt-icon" style="font-size:24px;margin-right:12px;margin-top:2px">⚡</span>
-            <div>
-              <b style="font-size:14px;color:var(--accent)">Recálculo Automático</b>
-              <p style="font-size:11px;color:var(--muted);margin-top:4px;font-weight:400;line-height:1.4">Adiciona o atraso inteiramente na meta de hoje. As metas dos dias seguintes permanecem inalteradas. (Ontem constará como 100% concluído!)</p>
-            </div>
-          </button>
-
-          <button class="option-btn" onclick="App.state.modal.subView='manual'; App.render()" style="display:flex;align-items:flex-start;text-align:left;padding:14px;border:1px solid var(--border)">
-            <span class="opt-icon" style="font-size:24px;margin-right:12px;margin-top:2px">✏️</span>
-            <div>
-              <b style="font-size:14px;color:var(--text)">Ajustar Manualmente</b>
-              <p style="font-size:11px;color:var(--muted);margin-top:4px;font-weight:400;line-height:1.4">Distribuir o atraso manualmente entre hoje e os próximos dias restantes da sua meta.</p>
-            </div>
-          </button>
-        </div>
-
-        <button class="btn-secondary" onclick="App.closeModal();" style="width:100%">Ignorar por enquanto</button>
-      </div>
-    </div>`;
-  },
-
   renderMissedTaskModal(){
     const m=this.state.modal,task=this.state.tasks.find(t=>t.id===m.taskId); if(!task)return'';
     return `<div class="overlay center">
@@ -3436,6 +3667,266 @@ renderManage() {
 
         <div style="font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Ranking por tarefa</div>
         ${rankingHtml}
+      </div>
+    </div>`;
+  },
+
+  applyAutoRecalculateBackground(taskId, yesterday, backlog) {
+    const task = this.state.tasks.find(t => t.id === taskId);
+    if (!task) return;
+    const yesterdayIdx = this.daysDiff(task.startDate, yesterday);
+    const today = this.getToday();
+    const todayIdx = this.daysDiff(task.startDate, today);
+    if (yesterdayIdx >= 0 && yesterdayIdx < task.dailyGoals.length) {
+      const yesterdayGoal = task.dailyGoals[yesterdayIdx];
+      const yesterdayProgress = this.getTaskDayData(task.id, yesterday).progress || 0;
+      this.setTaskDayData(task.id, yesterday, { 
+        originalGoal: yesterdayGoal, 
+        preRecalcGoals: [...task.dailyGoals] 
+      });
+      task.dailyGoals[yesterdayIdx] = yesterdayProgress;
+      if (todayIdx >= 0 && todayIdx < task.dailyGoals.length) {
+        task.dailyGoals[todayIdx] += backlog;
+      }
+      localStorage.setItem(`foco_recalc_${task.id}_${yesterday}`, '1');
+      this.save();
+    }
+  },
+
+  checkRecalculateBacklog() {
+    const today = this.getToday();
+    const yesterday = this.addDays(today, -1);
+    
+    this.state.tasks.forEach(task => {
+      if ((task.type !== 'goal' && task.type !== 'bible') || task.deleted || !task.active) return;
+      
+      const yesterdayIdx = this.daysDiff(task.startDate, yesterday);
+      const todayIdx = this.daysDiff(task.startDate, today);
+      
+      if (yesterdayIdx >= 0 && yesterdayIdx < task.dailyGoals.length) {
+        if (todayIdx >= 0 && todayIdx < task.dailyGoals.length) {
+          const yesterdayProgress = this.getTaskDayData(task.id, yesterday).progress || 0;
+          const yesterdayGoal = task.dailyGoals[yesterdayIdx];
+          
+          if (yesterdayProgress < yesterdayGoal) {
+            const key = `foco_recalc_${task.id}_${yesterday}`;
+            if (!localStorage.getItem(key)) {
+              // Silently auto-recalculate in background!
+              this.applyAutoRecalculateBackground(task.id, yesterday, yesterdayGoal - yesterdayProgress);
+            }
+          }
+        }
+      }
+    });
+  },
+
+  triggerBacklogCheckManual() {
+    const today = this.getToday();
+    const yesterday = this.addDays(today, -1);
+    
+    let backlogTask = null;
+    for (const task of this.state.tasks) {
+      if ((task.type !== 'goal' && task.type !== 'bible') || task.deleted || !task.active) continue;
+      
+      const yesterdayIdx = this.daysDiff(task.startDate, yesterday);
+      const todayIdx = this.daysDiff(task.startDate, today);
+      
+      if (yesterdayIdx >= 0 && yesterdayIdx < task.dailyGoals.length) {
+        const yesterdayProgress = this.getTaskDayData(task.id, yesterday).progress || 0;
+        
+        const hist = this.getTaskDayData(task.id, yesterday);
+        const yesterdayOriginalGoal = hist.originalGoal !== undefined ? hist.originalGoal : task.dailyGoals[yesterdayIdx];
+        
+        if (yesterdayProgress < yesterdayOriginalGoal) {
+          backlogTask = {
+            task,
+            yesterday,
+            yesterdayProgress,
+            yesterdayOriginalGoal,
+            backlog: yesterdayOriginalGoal - yesterdayProgress
+          };
+          break;
+        }
+      }
+    }
+    
+    if (backlogTask) {
+      const task = backlogTask.task;
+      const todayIdx = this.daysDiff(task.startDate, today);
+      const remainingDays = task.dailyGoals.length - todayIdx;
+      
+      this.state.modal = {
+        type: 'recalculate',
+        taskId: task.id,
+        yesterday: backlogTask.yesterday,
+        backlog: backlogTask.backlog,
+        remainingDays: remainingDays,
+        distribution: 'today',
+        adjustments: Array(remainingDays).fill(0)
+      };
+      
+      this.state.modal.adjustments[0] = backlogTask.backlog;
+      this.render();
+    } else {
+      this.showToast('✅ Nenhuma tarefa atrasada!', 'success');
+    }
+  },
+
+  setRecalcDist(dist) {
+    const m = this.state.modal;
+    if (!m) return;
+    m.distribution = dist;
+    
+    m.adjustments = Array(m.remainingDays).fill(0);
+    if (dist === 'today') {
+      m.adjustments[0] = m.backlog;
+    } else if (dist === 'equal') {
+      const eq = Math.floor(m.backlog / m.remainingDays);
+      const rem = m.backlog - eq * (m.remainingDays - 1);
+      for (let i = 0; i < m.remainingDays; i++) {
+        m.adjustments[i] = i === m.remainingDays - 1 ? rem : eq;
+      }
+    }
+    this.render();
+  },
+  
+  adjRecalcVal(i, amount) {
+    const m = this.state.modal;
+    if (!m) return;
+    const currentSum = m.adjustments.reduce((a, b) => a + b, 0);
+    
+    if (amount > 0 && currentSum >= m.backlog) return;
+    if (amount < 0 && m.adjustments[i] <= 0) return;
+    
+    m.adjustments[i] += amount;
+    this.render();
+  },
+  
+  saveRecalculate() {
+    const m = this.state.modal;
+    if (!m) return;
+    const task = this.state.tasks.find(t => t.id === m.taskId);
+    if (!task) return;
+    
+    const today = this.getToday();
+    const todayIdx = this.daysDiff(task.startDate, today);
+    const yesterdayIdx = this.daysDiff(task.startDate, m.yesterday);
+    
+    if (yesterdayIdx >= 0 && yesterdayIdx < task.dailyGoals.length) {
+      const yesterdayData = this.getTaskDayData(task.id, m.yesterday);
+      if (yesterdayData.preRecalcGoals) {
+        task.dailyGoals = [...yesterdayData.preRecalcGoals];
+      }
+      
+      const yesterdayProgress = yesterdayData.progress || 0;
+      const yesterdayGoal = task.dailyGoals[yesterdayIdx];
+      
+      this.setTaskDayData(task.id, m.yesterday, {
+        originalGoal: yesterdayGoal,
+        preRecalcGoals: [...task.dailyGoals]
+      });
+      
+      task.dailyGoals[yesterdayIdx] = yesterdayProgress;
+      
+      m.adjustments.forEach((adj, idx) => {
+        const targetIdx = todayIdx + idx;
+        if (targetIdx < task.dailyGoals.length) {
+          task.dailyGoals[targetIdx] += adj;
+        }
+      });
+      
+      localStorage.setItem(`foco_recalc_${task.id}_${m.yesterday}`, '1');
+      this.save();
+      this.closeModal();
+      this.render();
+      this.showToast('✏️ Metas redistribuídas com sucesso!', 'success');
+    }
+  },
+
+  renderRecalculateModal() {
+    const m = this.state.modal;
+    if (!m) return '';
+    const task = this.state.tasks.find(t => t.id === m.taskId);
+    if (!task) return '';
+    
+    const unit = task.goalUnit || 'páginas';
+    const backlog = m.backlog;
+    const today = this.getToday();
+    const todayIdx = this.daysDiff(task.startDate, today);
+    const dayNames = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+    
+    let distributionContent = '';
+    if (m.distribution === 'today') {
+      distributionContent = `<div style="font-size:13px;color:var(--muted);background:var(--surface2);padding:12px;border-radius:12px;margin-bottom:16px">
+        O atraso de <b style="color:var(--text)">${backlog} ${unit}</b> será totalmente adicionado à meta de hoje.
+      </div>`;
+    } else if (m.distribution === 'equal') {
+      const perDay = Math.round((backlog / m.remainingDays) * 10) / 10;
+      distributionContent = `<div style="font-size:13px;color:var(--muted);background:var(--surface2);padding:12px;border-radius:12px;margin-bottom:16px">
+        O atraso será dividido igualmente: <b style="color:var(--text)">~${perDay} ${unit}/dia</b> nos <b style="color:var(--text)">${m.remainingDays}</b> dias restantes.
+      </div>`;
+    } else if (m.distribution === 'custom') {
+      const listDays = Math.min(7, m.remainingDays);
+      let rows = '';
+      for (let i = 0; i < listDays; i++) {
+        const d = this.addDays(today, i);
+        const [yr, mo, da] = d.split('-').map(Number);
+        const lbl = i === 0 ? 'Hoje' : dayNames[new Date(yr, mo-1, da).getDay()];
+        
+        const baseGoal = task.dailyGoals[todayIdx + i] - (i === 0 ? backlog : 0);
+        const adj = m.adjustments[i] || 0;
+        const totalVal = baseGoal + adj;
+        
+        rows += `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:12px">
+          <div style="font-size:13px;font-weight:600;color:var(--muted);width:70px">${lbl}</div>
+          <div style="font-size:12px;color:var(--muted)">Planejado: ${baseGoal}</div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <button class="toggle-btn" onclick="App.adjRecalcVal(${i}, -1)" style="padding:4px 8px;font-size:12px">-</button>
+            <span style="font-weight:700;min-width:30px;text-align:center;font-size:15px;color:var(--accent)">+${adj}</span>
+            <button class="toggle-btn" onclick="App.adjRecalcVal(${i}, 1)" style="padding:4px 8px;font-size:12px">+</button>
+          </div>
+          <div style="font-size:13px;font-weight:700;color:var(--text);width:60px;text-align:right">${totalVal} ${unit}</div>
+        </div>`;
+      }
+      
+      const currentSum = m.adjustments.reduce((a, b) => a + b, 0);
+      const diff = backlog - currentSum;
+      
+      distributionContent = `<div style="margin-bottom:16px">
+        <div class="dist-total ${diff===0?'ok':'over'}" style="margin-bottom:12px;padding:8px 12px;font-size:13px">
+          ${diff===0 ? '✓ Todos os atrasos distribuídos!' : (diff>0 ? `▲ Falta distribuir ${diff} ${unit}` : `▼ Excesso de ${Math.abs(diff)} ${unit}`)}
+        </div>
+        <div style="background:var(--surface2);border-radius:12px;padding:12px;max-height:180px;overflow-y:auto">
+          ${rows}
+        </div>
+      </div>`;
+    }
+    
+    return `<div class="overlay" onclick="if(event.target===this)App.closeModal()">
+      <div class="modal" style="max-width:400px">
+        <div class="modal-title">⚡ Gerenciar Atrasos</div>
+        <div class="modal-sub">${task.name}</div>
+        
+        <div style="background:linear-gradient(135deg, rgba(235,94,85,0.1), rgba(240,165,0,0.1));border:1px solid rgba(235,94,85,0.2);border-radius:12px;padding:12px;margin-bottom:16px;font-size:13px;display:flex;align-items:center;gap:10px">
+          <span style="font-size:24px">⚠️</span>
+          <div>
+            Você tem <b style="color:var(--accent)">${backlog} ${unit}</b> de atraso acumulado de ontem.
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Como deseja redistribuir?</label>
+          <div class="toggle-group" style="margin-bottom:16px">
+            <button class="toggle-btn ${m.distribution==='today'?'active':''}" onclick="App.setRecalcDist('today')">Adicionar a Hoje</button>
+            <button class="toggle-btn ${m.distribution==='equal'?'active':''}" onclick="App.setRecalcDist('equal')">Dividir Restante</button>
+            <button class="toggle-btn ${m.distribution==='custom'?'active':''}" onclick="App.setRecalcDist('custom')">Personalizado</button>
+          </div>
+        </div>
+        
+        ${distributionContent}
+        
+        <button class="btn-primary" onclick="App.saveRecalculate()" ${m.distribution==='custom' && m.adjustments.reduce((a,b)=>a+b,0)!==backlog ? 'disabled style="opacity:0.5;cursor:not-allowed"' : ''}>✓ Confirmar Redistribuição</button>
+        <button class="btn-secondary" onclick="App.closeModal()">Cancelar</button>
       </div>
     </div>`;
   },
