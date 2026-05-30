@@ -2116,9 +2116,50 @@ renderManage() {
           <div style="font-size:14px;color:var(--muted)">→</div>
         </div>
 
+        <div style="font-size:11px;font-weight:700;letter-spacing:.5px;color:var(--muted);text-transform:uppercase;margin:16px 0 8px">⚙️ Resolução de Problemas</div>
+        <div class="sync-option" onclick="App.clearAppCache()">
+          <div class="sync-icon-wrap" style="background:rgba(255,107,107,.1);color:var(--red)">🧹</div>
+          <div class="sync-option-info">
+            <div class="sync-option-title" style="color:var(--red)">Limpar Cache do Aplicativo</div>
+            <div class="sync-option-sub">Resolve travamentos e problemas na sincronização</div>
+          </div>
+          <div style="font-size:14px;color:var(--red)">→</div>
+        </div>
+
         <button class="btn-secondary" onclick="App.closeModal()">Fechar</button>
       </div>
     </div>`;
+  },
+
+  async clearAppCache() {
+    if (!window.confirm('Deseja limpar o cache do aplicativo? Isso irá reiniciar o app para corrigir travamentos da nuvem, sem apagar suas atividades locais.')) return;
+    
+    this.showToast('🧹 Limpando cache...', '');
+    try {
+      if ('caches' in window) {
+        const keys = await caches.keys();
+        for (const key of keys) {
+          await caches.delete(key);
+        }
+      }
+      
+      if ('serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        for (const reg of registrations) {
+          await reg.unregister();
+        }
+      }
+
+      sessionStorage.clear();
+
+      this.showToast('✅ Cache limpo! Reiniciando...', 'success');
+      setTimeout(() => {
+        window.location.reload(true);
+      }, 1500);
+    } catch (e) {
+      console.error('Erro ao limpar cache:', e);
+      this.showToast('❌ Erro ao limpar cache', 'error');
+    }
   },
 
   getExportData() {
