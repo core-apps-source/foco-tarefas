@@ -50,15 +50,15 @@
   --r: 16px;
   --font: 'Outfit', sans-serif;
 }
-[data-theme="rosa"]{--accent:#ff6bb3;--accent2:#e879f9;--accent-light:#ffb5e6;}
-[data-theme="laranja"]{--accent:#ff9f43;--accent2:#8b7cf6;--accent-light:#ffcc70;}
-[data-theme="azul"]{--accent:#3b82f6;--accent2:#1d4ed8;--accent-light:#60a5fa;}
-[data-theme="vermelho"]{--accent:#ef4444;--accent2:#dc2626;--accent-light:#f87171;}
-[data-theme="lilas"]{--accent:#c084fc;--accent2:#a78bfa;--accent-light:#ddd6fe;}
-[data-theme="azul"] body{background:linear-gradient(165deg,#020617 0%,#0c1929 42%,#0f172a 100%);background-attachment:fixed;}
+[data-theme="rosa"]  {--accent:#ff6bb3;--accent2:#e879f9;--accent-light:#ffb5e6;--bg:linear-gradient(165deg,#63244b 0%,#220d11 42%,#0e0b14 100%);}
+[data-theme="laranja"]{--accent:#ff9f43;--accent2:#8b7cf6;--accent-light:#ffcc70;--bg:linear-gradient(165deg,#928120 0%,#4b381d 42%,#0f0c08 100%);}
+[data-theme="azul"]  {--accent:#3b82f6;--accent2:#1d4ed8;--accent-light:#60a5fa;--bg:linear-gradient(165deg,#020617 0%,#0c1929 42%,#0f172a 100%);}
+[data-theme="vermelho"]{--accent:#ef4444;--accent2:#dc2626;--accent-light:#f87171;--bg:linear-gradient(165deg,#921111 0%,#150606 42%,#100505 100%);}
+[data-theme="lilas"] {--accent:#c084fc;--accent2:#a78bfa;--accent-light:#ddd6fe;--bg:linear-gradient(165deg,#67209e 0%,#0f0a18 42%,#0c0b14 100%);}
+[data-theme="cinza"] {--accent:#94a3b8;--accent2:#64748b;--accent-light:#cbd5e1;--bg:linear-gradient(165deg,#5f696b 0%,#4b4b4d 42%,#0b0b10 100%);}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 html,body{height:100%;overflow:hidden;}
-body{font-family:var(--font);background:var(--bg);color:var(--text);display:flex;justify-content:center;align-items:stretch;}
+body{font-family:var(--font);background:var(--bg);background-attachment:fixed;color:var(--text);display:flex;justify-content:center;align-items:stretch;}
 #app{width:100%;max-width:480px;height:100%;display:flex;flex-direction:column;position:relative;overflow:hidden;}
 .view{flex:1;overflow-y:auto;overflow-x:hidden;padding:0 0 90px;scroll-behavior:smooth;}
 .view::-webkit-scrollbar{width:3px;}
@@ -66,7 +66,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);display:flex
 .header{padding:52px 20px 16px;display:flex;align-items:center;justify-content:space-between;background:linear-gradient(to bottom,var(--bg) 80%,transparent);position:sticky;top:0;z-index:10;}
 .header-left h1{font-size:22px;font-weight:800;letter-spacing:-0.5px;}
 .header-left h1 span{color:var(--accent);}
-.header-left p{font-size:13px;color:var(--muted);margin-top:2px;}
+.header-left p{font-size:13px;color:rgba(255,255,255,.55);margin-top:2px;}
 .header-btns{display:flex;gap:8px;}
 .header-btn{width:40px;height:40px;border-radius:12px;background:var(--surface2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:17px;transition:all .15s;}
 .header-btn:hover{background:var(--surface3);}
@@ -215,9 +215,6 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);display:flex
 @keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(-8px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
 .data-textarea{width:100%;height:90px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:10px 12px;font-family:monospace;font-size:11px;color:var(--muted);resize:none;outline:none;}
 .data-textarea:focus{border-color:var(--accent);color:var(--text);}
-.day-reset-banner{margin:0 16px 12px;background:rgba(139,124,246,.12);border:1px solid rgba(139,124,246,.25);border-radius:14px;padding:12px 16px;display:flex;align-items:center;gap:10px;font-size:13px;color:var(--accent2);}
-.day-reset-banner b{font-weight:700;}
-
 /* ===== TASK DETAIL MODAL ===== */
 .detail-header{display:flex;align-items:center;gap:14px;margin-bottom:20px;}
 .detail-icon{width:52px;height:52px;border-radius:16px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;}
@@ -278,7 +275,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);display:flex
 .date-pill{flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 12px;border-radius:14px;cursor:pointer;border:1.5px solid transparent;background:var(--surface);transition:all .18s;min-width:52px;}
 .date-pill:hover{background:var(--surface2);}
 .date-pill.selected{background:var(--accent);border-color:var(--accent);}
-.date-pill.selected .dp-dow{color:rgba(255,255,255,.75);}
+.date-pill.selected .dp-dow{color:rgba(255,255,255,.8);}
 .date-pill.selected .dp-num{color:#fff;}
 .date-pill.is-today:not(.selected){border-color:color-mix(in srgb,var(--accent) 50%,transparent);background:color-mix(in srgb,var(--accent) 8%,transparent);}
 .dp-dow{font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);}
@@ -301,7 +298,6 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);display:flex
 .task-card.preview:hover{background:var(--surface);}
 .goal-preview-amount{font-size:22px;font-weight:900;color:var(--accent);line-height:1;}
 .goal-preview-unit{font-size:12px;color:var(--muted);margin-top:1px;}
-.goal-preview-right{text-align:right;flex-shrink:0;}
 .goal-total-pill{display:inline-flex;align-items:center;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:4px 10px;font-size:11px;font-weight:700;color:var(--muted);margin-top:6px;}
 
 /* ===== MEDALS ===== */
@@ -330,45 +326,6 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);display:flex
 .theme-card.active .theme-card-check{display:block;}
 .theme-preview-ring{width:100%;height:8px;background:var(--surface3);border-radius:999px;overflow:hidden;margin-top:4px;}
 .theme-preview-fill{height:100%;border-radius:999px;width:68%;}
-
-
-/* ===== AUTH SCREEN ===== */
-#auth-screen{position:fixed;inset:0;background:var(--bg);z-index:999;display:flex;align-items:center;justify-content:center;padding:24px;font-family:var(--font);}
-#auth-screen.hidden{display:none;}
-.auth-box{width:100%;max-width:360px;background:var(--surface);border:1px solid var(--border);border-radius:24px;padding:32px 24px 28px;display:flex;flex-direction:column;animation:slideUp .3s cubic-bezier(.4,0,.2,1);}
-.auth-logo{text-align:center;font-size:40px;margin-bottom:8px;}
-.auth-title{text-align:center;font-size:22px;font-weight:800;color:var(--text);margin-bottom:4px;}
-.auth-sub{text-align:center;font-size:13px;color:var(--muted);margin-bottom:28px;}
-.auth-field{margin-bottom:14px;}
-.auth-field label{display:block;font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);margin-bottom:6px;}
-.auth-field input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:13px 14px;font-family:var(--font);font-size:15px;color:var(--text);outline:none;transition:border-color .15s;}
-.auth-field input:focus{border-color:var(--accent);}
-.auth-field input::placeholder{color:var(--muted);}
-.auth-btn{width:100%;padding:14px;border-radius:14px;background:var(--accent);border:none;font-family:var(--font);font-size:15px;font-weight:700;color:#fff;cursor:pointer;transition:all .15s;margin-top:6px;}
-.auth-btn:hover{filter:brightness(1.1);}
-.auth-btn:disabled{opacity:.6;cursor:not-allowed;}
-.auth-toggle{text-align:center;font-size:13px;color:var(--muted);margin-top:16px;}
-.auth-toggle a{color:var(--accent);font-weight:600;cursor:pointer;text-decoration:underline;}
-.auth-error{background:rgba(255,107,107,.12);border:1px solid rgba(255,107,107,.3);color:#ff6b6b;border-radius:10px;padding:10px 14px;font-size:13px;font-weight:500;margin-bottom:14px;display:none;}
-.auth-error.show{display:block;}
-.auth-success{background:rgba(46,213,115,.12);border:1px solid rgba(46,213,115,.3);color:#2ed573;border-radius:10px;padding:10px 14px;font-size:13px;font-weight:500;margin-bottom:14px;display:none;}
-.auth-success.show{display:block;}
-.auth-divider{display:flex;align-items:center;gap:10px;margin:16px 0 0;}
-.auth-divider::before,.auth-divider::after{content:'';flex:1;height:1px;background:var(--border);}
-.auth-divider span{font-size:11px;color:var(--muted);font-weight:600;}
-.auth-logout-btn{position:fixed;top:16px;right:16px;z-index:40;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:7px 12px;font-family:var(--font);font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;transition:all .15s;display:none;}
-.auth-logout-btn:hover{color:var(--text);background:var(--surface3);}
-.auth-logout-btn.visible{display:block;}
-
-.auth-btn-secondary {
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  color: var(--text);
-  margin-top: 8px !important;
-}
-.auth-btn-secondary:hover {
-  background: var(--surface3);
-}
 .bible-sel-wrap {
   display: flex;
   gap: 10px;
@@ -399,18 +356,8 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);display:flex
 <input type="file" id="import-file" accept=".foco,.json" style="display:none" onchange="App.handleImportFile(event)">
 <script>
 
-// =====================================================
-//  AUTH
-// =====================================================
-const Auth = {
-  isLocal: true,
-  async init() {
-    App.init();
-  }
-};
-
 document.addEventListener('DOMContentLoaded', () => {
-  Auth.init();
+  App.init();
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js')
       .then(reg => console.log('Service Worker registrado com sucesso!', reg))
@@ -418,8 +365,42 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-const GDRIVE_FILENAME = 'foco-backup.foco';
-const GDRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
+
+const DOM_IDS = Object.freeze({
+  app: 'app',
+  importFile: 'import-file'
+});
+
+const STORAGE_KEYS = Object.freeze({
+  appState: 'foco_v2',
+  lastSync: 'foco_last_sync',
+  recalcPrefix: 'foco_recalc_'
+});
+
+const VIEWS = Object.freeze({
+  today: 'today',
+  summary: 'summary',
+  manage: 'manage',
+  appearance: 'appearance',
+  medals: 'medals'
+});
+
+const MODALS = Object.freeze({
+  addTask: 'addTask',
+  logProgress: 'logProgress',
+  logBible: 'logBible',
+  logWords: 'logWords',
+  defineConversion: 'defineConversion',
+  suggestion: 'suggestion',
+  missedTask: 'missedTask',
+  insights: 'insights',
+  sync: 'sync',
+  pasteImport: 'pasteImport',
+  finishTime: 'finishTime',
+  taskDetail: 'taskDetail',
+  medalDetail: 'medalDetail',
+  recalculate: 'recalculate'
+});
 
 const THEMES = {
   rosa:    { name:'Rosa',     desc:'Rosa suave', swatch:'linear-gradient(90deg,#ff6bb3,#ffb5e6)', fill:'linear-gradient(90deg,#ff6bb3,#ffb5e6)' },
@@ -427,6 +408,7 @@ const THEMES = {
   azul:    { name:'Azul',     desc:'Azul escuro em gradiente', swatch:'linear-gradient(90deg,#1d4ed8,#3b82f6,#60a5fa)', fill:'linear-gradient(90deg,#3b82f6,#60a5fa)' },
   vermelho:{ name:'Vermelho', desc:'Vermelho intenso', swatch:'linear-gradient(90deg,#dc2626,#f87171)', fill:'linear-gradient(90deg,#ef4444,#f87171)' },
   lilas:   { name:'Lilás',    desc:'Roxo lilás', swatch:'linear-gradient(90deg,#a78bfa,#ddd6fe)', fill:'linear-gradient(90deg,#c084fc,#ddd6fe)' },
+  cinza:   { name:'Cinza',    desc:'Cinza neutro', swatch:'linear-gradient(90deg,#64748b,#cbd5e1)', fill:'linear-gradient(90deg,#94a3b8,#cbd5e1)' },
 };
 
 const BIBLE_BOOKS = [
@@ -525,16 +507,28 @@ function getBookAndChapterFromAbsolute(absChapter) {
 
 const App = {
   state: null,
-  gdriveToken: null,
+
+  getAppRoot() {
+    const el = document.getElementById(DOM_IDS.app);
+    if (!el) throw new Error(`Elemento #${DOM_IDS.app} não encontrado.`);
+    return el;
+  },
+
+  openImportFile() {
+    const el = document.getElementById(DOM_IDS.importFile);
+    if (el) el.click();
+    else this.showToast('Importador de arquivo não encontrado.', 'error');
+  },
 
   defaultState() {
-    return { tasks:[], history:{}, view:'today', summaryPeriod:'daily', modal:null, wizard:null, selectedDate: null, theme:'rosa' };
+    return { tasks:[], history:{}, view:VIEWS.today, summaryPeriod:'daily', modal:null, wizard:null, selectedDate: null, theme:'rosa' };
   },
 
   loadState() {
     try {
-      const saved = localStorage.getItem('foco_v2');
+      const saved = localStorage.getItem(STORAGE_KEYS.appState);
       this.state = saved ? JSON.parse(saved) : this.defaultState();
+      if (!Object.values(VIEWS).includes(this.state.view)) this.state.view = VIEWS.today;
       if (!this.state.theme || !THEMES[this.state.theme]) this.state.theme = 'rosa';
     } catch(e) { this.state = this.defaultState(); }
   },
@@ -595,7 +589,7 @@ const App = {
       const keysToRemove = [];
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
-        if (key && key.startsWith('foco_recalc_')) {
+        if (key && key.startsWith(STORAGE_KEYS.recalcPrefix)) {
           const parts = key.split('_');
           const dateStr = parts[parts.length - 1]; // formato YYYY-MM-DD
           if (dateStr && dateStr.includes('-') && this.daysDiff(dateStr, today) > 30) {
@@ -614,7 +608,7 @@ const App = {
       this.pruneState();
       this.state.last_updated = Date.now();
     }
-    localStorage.setItem('foco_v2', JSON.stringify(this.state));
+    localStorage.setItem(STORAGE_KEYS.appState, JSON.stringify(this.state));
   },
 
   applyTheme() {
@@ -799,9 +793,6 @@ const App = {
     }
     return true;
   },
-  getTodayTasks() {
-    return this.state.tasks.filter(t=>this.isTaskActiveOnDate(t,this.getToday()));
-  },
   getDailyCompletion(date) {
     const tasks=this.state.tasks.filter(t=>this.isTaskActiveOnDate(t,date));
     if (!tasks.length) return 0;
@@ -839,7 +830,7 @@ const App = {
   promptFinishTime(taskId, date) {
     const data = this.getTaskDayData(taskId,date);
     if (data.finishedTime) return;
-    setTimeout(()=>{ this.state.modal={type:'finishTime',taskId,date}; this.render(); },300);
+      setTimeout(()=>{ this.state.modal={type:MODALS.finishTime,taskId,date}; this.render(); },300);
   },
   saveFinishTime(taskId, date, time, timeSpent) {
     const update = {};
@@ -920,19 +911,19 @@ const App = {
 
   // ===================== RENDER MAIN =====================
   render() {
-    document.getElementById('app').innerHTML=`
+    this.getAppRoot().innerHTML=`
       ${this.renderView()}
       <nav class="bottom-nav">
-        ${this.navBtn('today','📋','Hoje')}
-        ${this.navBtn('summary','📊','Resumo')}
-        ${this.navBtn('manage','⚙️','Tarefas')}
-        ${this.navBtn('appearance','🎨','Paleta')}
-        ${this.navBtn('medals','🏅','Medalhas')}
-        <button class="nav-btn" onclick="App.openSync()" style="${this.state.view==='sync'?'color:var(--accent)':''}">
+        ${this.navBtn(VIEWS.today,'📋','Hoje')}
+        ${this.navBtn(VIEWS.summary,'📊','Resumo')}
+        ${this.navBtn(VIEWS.manage,'⚙️','Tarefas')}
+        ${this.navBtn(VIEWS.appearance,'🎨','Paleta')}
+        ${this.navBtn(VIEWS.medals,'🏅','Medalhas')}
+        <button class="nav-btn" onclick="App.openSync()">
           <span class="nav-icon">🔄</span><span class="nav-label">Sincronizar</span>
         </button>
       </nav>
-      ${this.state.view==='today'?`<button class="fab" onclick="App.openAddTask()">+</button>`:''}
+      ${this.state.view===VIEWS.today?`<button class="fab" onclick="App.openAddTask()">+</button>`:''}
       ${this.state.modal?this.renderModal():''}
     `;
   },
@@ -940,9 +931,21 @@ const App = {
     return `<button class="nav-btn ${this.state.view===v?'active':''}" onclick="App.setView('${v}')">
       <span class="nav-icon">${icon}</span><span class="nav-label">${label}</span></button>`;
   },
-  setView(v){this.state.view=v;this.save();this.render();},
+  setView(v){
+    this.state.view = Object.values(VIEWS).includes(v) ? v : VIEWS.today;
+    this.save();
+    this.render();
+  },
   renderView(){
-    return {today:()=>this.renderToday(),summary:()=>this.renderSummary(),manage:()=>this.renderManage(),appearance:()=>this.renderAppearance(),medals:()=>this.renderMedalsView()}[this.state.view]?.()??'';
+    const views = {
+      [VIEWS.today]:()=>this.renderToday(),
+      [VIEWS.summary]:()=>this.renderSummary(),
+      [VIEWS.manage]:()=>this.renderManage(),
+      [VIEWS.appearance]:()=>this.renderAppearance(),
+      [VIEWS.medals]:()=>this.renderMedalsView()
+    };
+    if (!views[this.state.view]) this.state.view = VIEWS.today;
+    return views[this.state.view]();
   },
 
   renderAppearance() {
@@ -1218,13 +1221,12 @@ const App = {
     </div>`;
   },
 
-  renderTodayTasks(tasks,today) {
-    return this.renderDayTasks(tasks, today, false, false);
-  },
-
   renderTaskCard(task,date,nowMins) {
     const data=this.getTaskDayData(task.id,date);
     const isToday=date===this.getToday();
+    const [_y,_m,_d]=date.split('-').map(Number);
+    const _dowFull=['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'][new Date(_y,_m-1,_d).getDay()];
+    const dowBadge=`<span class="task-time-badge" style="background:var(--surface3);color:var(--muted);font-size:10px">📅 ${_dowFull}</span>`;
     if (task.type==='simple') {
       const checked=data.completed;
       let timeBadge='',overdueClass='';
@@ -1250,7 +1252,7 @@ const App = {
         </div>
         <div class="task-body" onclick="App.openTaskDetail('${task.id}')" style="cursor:pointer">
           <div class="task-name">${task.name}</div>
-          <div class="task-sub">${timeBadge}${ftBadge}</div>
+        <div class="task-sub">${dowBadge}${timeBadge}${ftBadge}</div>
           ${(hasMinutes||hasWords)?`
           <div class="goal-bar-wrap" style="margin-top:8px">
             ${hasMinutes?`
@@ -1325,6 +1327,7 @@ const App = {
           <div class="task-name">${task.name}</div>
           <div class="task-sub">
             <span class="chip ${isFull?'green':'orange'}">Dia ${idx+1}/${task.dailyGoals.length}</span>
+            ${dowBadge}
             ${task.schedule==='fixed'?`<span class="task-time-badge">⏰ ${task.scheduledTime}</span>`:`<span class="task-time-badge">🔄 Flexível</span>`}
             <span class="task-time-badge" style="background:var(--surface3)">${rangeLabel}</span>
             ${medalBadge}${ftBadge}${timeSpentBadge}
@@ -1396,7 +1399,8 @@ const App = {
         <div class="task-body" onclick="App.openTaskDetail('${task.id}')" style="cursor:pointer">
           <div class="task-name">${task.name}</div>
           <div class="task-sub">
-            <span class="chip ${isFull?'green':'orange'}">Dia ${idx+1}/${task.dailyGoals.length}</span>
+           <span class="chip ${isFull?'green':'orange'}">Dia ${idx+1}/${task.dailyGoals.length}</span>
+            ${dowBadge}
             ${task.schedule==='fixed'?`<span class="task-time-badge">⏰ ${task.scheduledTime}</span>`:`<span class="task-time-badge">🔄 Flexível</span>`}
             ${task.goalUnit!=='min'?`<span class="task-time-badge" style="background:var(--surface3)">${rangeLabel} ${task.goalUnit}</span>`:''}
             ${medalBadge}${ftBadge}${timeSpentBadge}
@@ -1438,7 +1442,7 @@ const App = {
 
     if (d.preRecalcGoals) {
       task.dailyGoals = [...d.preRecalcGoals];
-      localStorage.removeItem(`foco_recalc_${task.id}_${date}`);
+      localStorage.removeItem(`${STORAGE_KEYS.recalcPrefix}${task.id}_${date}`);
     }
 
     const reset = {
@@ -1644,11 +1648,9 @@ renderManage() {
   },
 
   // ===================== SYNC =====================
-  openSync(){this.state.modal={type:'sync'};this.render();},
+  openSync(){this.state.modal={type:MODALS.sync};this.render();},
   renderSyncModal() {
-    const gConnected=!!this.gdriveToken;
-    const clientIdSet=!!localStorage.getItem('foco_gdrive_client_id');
-    const lastSync=localStorage.getItem('foco_last_sync');
+    const lastSync=localStorage.getItem(STORAGE_KEYS.lastSync);
     const lastSyncLabel=lastSync?new Date(parseInt(lastSync)).toLocaleString('pt-BR'):null;
     return `<div class="overlay" onclick="if(event.target===this)App.closeModal()">
       <div class="modal">
@@ -1658,38 +1660,13 @@ renderManage() {
           Exporte ou importe para sincronizar entre dispositivos.
           ${lastSyncLabel?`<br><span style="color:var(--green);font-size:12px">✓ Último backup: ${lastSyncLabel}</span>`:''}
         </div>
-
-
-
-        <div style="font-size:11px;font-weight:700;letter-spacing:.5px;color:var(--muted);text-transform:uppercase;margin-bottom:8px">☁️ Google Drive</div>
-        ${clientIdSet?`
-          <div class="sync-option" onclick="App.gdriveAuth()">
-            <div class="sync-icon-wrap" style="background:rgba(66,133,244,.1)">
-              <svg width="22" height="22" viewBox="0 0 87.3 78"><path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/><path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0-1.2 4.5h27.5z" fill="#00ac47"/><path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5h-27.5l5.85 11.5z" fill="#ea4335"/><path d="m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/><path d="m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/><path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 27h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/></svg>
-            </div>
-            <div class="sync-option-info">
-              <div class="sync-option-title">${gConnected?'✓ Drive conectado':'Entrar com Google'}</div>
-              <div class="sync-option-sub">${gConnected?'Clique para salvar/carregar':'Autorizar acesso à pasta do app'}</div>
-            </div>
-            <div style="font-size:14px;color:var(--muted)">→</div>
-          </div>
-          ${gConnected?`<div style="display:flex;gap:8px;margin-bottom:8px">
-            <button class="btn-primary" onclick="App.gdriveSave()" style="margin-top:0;flex:1;font-size:13px;padding:11px">⬆️ Salvar no Drive</button>
-            <button class="btn-secondary" onclick="App.gdriveLoad()" style="margin-top:0;flex:1;font-size:13px;padding:11px">⬇️ Carregar do Drive</button>
-          </div>`:''}`:`
-          <div class="sync-option" onclick="App.openGdriveSetup()">
-            <div class="sync-icon-wrap" style="background:rgba(66,133,244,.1)">🔑</div>
-            <div class="sync-option-info"><div class="sync-option-title">Configurar Google Drive</div><div class="sync-option-sub">Requer Client ID (gratuito)</div></div>
-            <div style="font-size:14px;color:var(--muted)">→</div>
-          </div>`}
-
-        <div style="font-size:11px;font-weight:700;letter-spacing:.5px;color:var(--muted);text-transform:uppercase;margin:16px 0 8px">📁 Arquivo local</div>
+        <div style="font-size:11px;font-weight:700;letter-spacing:.5px;color:var(--muted);text-transform:uppercase;margin-bottom:8px">📁 Arquivo local</div>
         <div class="sync-option" onclick="App.exportFile()">
           <div class="sync-icon-wrap" style="background:color-mix(in srgb,var(--accent) 10%,transparent)">⬇️</div>
           <div class="sync-option-info"><div class="sync-option-title">Exportar .foco</div><div class="sync-option-sub">Baixa arquivo com todos os dados</div></div>
           <div style="font-size:14px;color:var(--muted)">→</div>
         </div>
-        <div class="sync-option" onclick="document.getElementById('import-file').click()">
+        <div class="sync-option" onclick="App.openImportFile()">
           <div class="sync-icon-wrap" style="background:rgba(139,124,246,.1)">⬆️</div>
           <div class="sync-option-info"><div class="sync-option-title">Importar .foco</div><div class="sync-option-sub">Restaura dados de outro dispositivo</div></div>
           <div style="font-size:14px;color:var(--muted)">→</div>
@@ -1766,7 +1743,7 @@ renderManage() {
     const data=JSON.stringify(this.getExportData(),null,2);
     const a=Object.assign(document.createElement('a'),{href:URL.createObjectURL(new Blob([data],{type:'application/json'})),download:`foco-${this.getToday()}.foco`});
     a.click(); URL.revokeObjectURL(a.href);
-    localStorage.setItem('foco_last_sync',Date.now().toString());
+    localStorage.setItem(STORAGE_KEYS.lastSync,Date.now().toString());
     this.showToast('✅ Arquivo exportado!','success');
   },
   handleImportFile(event) {
@@ -1785,7 +1762,7 @@ renderManage() {
     document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
     this.showToast('📋 Copiado!','success');
   },
-  openPasteImport(){this.state.modal={type:'pasteImport'};this.render();},
+  openPasteImport(){this.state.modal={type:MODALS.pasteImport};this.render();},
   renderPasteImportModal() {
     return `<div class="overlay" onclick="if(event.target===this)App.closeModal()">
       <div class="modal">
@@ -1834,10 +1811,10 @@ renderManage() {
         this.state = {
           ...this.defaultState(),
           ...parsed,
-          view: this.state?.view || 'today',
+          view: this.state?.view || VIEWS.today,
           theme: parsed.theme || this.state?.theme || 'rosa'
         };
-        localStorage.setItem('foco_v2', JSON.stringify(this.state));
+        localStorage.setItem(STORAGE_KEYS.appState, JSON.stringify(this.state));
         this.applyTheme();
         return;
       }
@@ -1861,91 +1838,34 @@ renderManage() {
       this.state.tasks = newTasks;
       this.state.history = mergedHistory;
       if (parsed.theme && !this.state.theme) this.state.theme = parsed.theme;
-      localStorage.setItem('foco_v2', JSON.stringify(this.state));
+      localStorage.setItem(STORAGE_KEYS.appState, JSON.stringify(this.state));
     } catch(e) { console.error('importDataSilent error:', e); }
   },
-  // ===================== GOOGLE DRIVE =====================
-  openGdriveSetup(){this.state.modal={type:'gdriveSetup'};this.render();},
-  renderGdriveSetupModal() {
-    const clientId=localStorage.getItem('foco_gdrive_client_id')||'';
-    return `<div class="overlay" onclick="if(event.target===this)App.closeModal()">
-      <div class="modal">
-        <div class="modal-handle"></div>
-        <div class="modal-title">🔑 Configurar Google Drive</div>
-        <div class="modal-sub">Configure uma vez, use em todos os dispositivos.</div>
-        <div style="background:var(--surface2);border-radius:12px;padding:12px 14px;margin-bottom:16px;font-size:13px;line-height:1.8;color:var(--muted)">
-          <b style="color:var(--text)">Como obter o Client ID (gratuito):</b><br>
-          1. Acesse <b style="color:var(--accent)">console.cloud.google.com</b><br>
-          2. Crie projeto → Ativar <b>Google Drive API</b><br>
-          3. Credenciais → OAuth2 → Tipo: <b>Aplicativo da Web</b><br>
-          4. Origens JS: cole a URL deste arquivo<br>
-          5. Copie o <b>Client ID</b> abaixo
-        </div>
-        <div class="form-group">
-          <label class="form-label">Google Client ID</label>
-          <input class="form-input" id="gdrive-client-id" placeholder="xxxxx.apps.googleusercontent.com" value="${clientId}">
-        </div>
-        <button class="btn-primary" onclick="App.saveGdriveClientId()">Salvar e conectar</button>
-        <button class="btn-secondary" onclick="App.openSync()">← Voltar</button>
-      </div>
-    </div>`;
-  },
-  saveGdriveClientId() {
-    const el=document.getElementById('gdrive-client-id');
-    if (!el||!el.value.trim()){this.showToast('Cole o Client ID','error');return;}
-    localStorage.setItem('foco_gdrive_client_id',el.value.trim()); location.reload();
-  },
-  gdriveAuth() {
-    const clientId=localStorage.getItem('foco_gdrive_client_id');
-    if (!clientId){this.openGdriveSetup();return;}
-    if (this.gdriveToken){this.openSync();return;}
-    const params=new URLSearchParams({client_id:clientId,redirect_uri:location.origin+location.pathname,response_type:'token',scope:GDRIVE_SCOPE,include_granted_scopes:'true'});
-    const popup=window.open(`https://accounts.google.com/o/oauth2/v2/auth?${params}`,'gauth','width=500,height=600');
-    const check=setInterval(()=>{
-      try{
-        if (!popup||popup.closed){clearInterval(check);return;}
-        const hash=popup.location.hash;
-        if (hash){
-          const p=new URLSearchParams(hash.slice(1));const token=p.get('access_token');
-          if (token){this.gdriveToken=token;popup.close();clearInterval(check);this.showToast('✅ Drive conectado!','success');this.closeModal();this.render();}
-        }
-      }catch(e){}
-    },500);
-  },
-  async gdriveSave() {
-    if (!this.gdriveToken){this.showToast('Conecte o Drive primeiro','error');return;}
-    this.showToast('⏳ Salvando...','');
-    try{
-      const data=JSON.stringify(this.getExportData(),null,2);
-      const searchRes=await fetch(`https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name='${GDRIVE_FILENAME}'&fields=files(id)`,{headers:{Authorization:`Bearer ${this.gdriveToken}`}});
-      const sj=await searchRes.json(); const existingId=sj.files?.[0]?.id;
-      const meta={name:GDRIVE_FILENAME,mimeType:'application/json',...(existingId?{}:{parents:['appDataFolder']})};
-      const form=new FormData();
-      form.append('metadata',new Blob([JSON.stringify(meta)],{type:'application/json'}));
-      form.append('file',new Blob([data],{type:'application/json'}));
-      const url=existingId?`https://www.googleapis.com/upload/drive/v3/files/${existingId}?uploadType=multipart`:`https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart`;
-      const res=await fetch(url,{method:existingId?'PATCH':'POST',headers:{Authorization:`Bearer ${this.gdriveToken}`},body:form});
-      if (res.ok){localStorage.setItem('foco_last_sync',Date.now().toString());this.showToast('✅ Salvo no Drive!','success');this.closeModal();this.render();}
-      else throw new Error(await res.text());
-    }catch(e){this.showToast('❌ Erro: '+e.message,'error');}
-  },
-  async gdriveLoad() {
-    if (!this.gdriveToken){this.showToast('Conecte o Drive primeiro','error');return;}
-    this.showToast('⏳ Carregando...','');
-    try{
-      const searchRes=await fetch(`https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name='${GDRIVE_FILENAME}'&fields=files(id)`,{headers:{Authorization:`Bearer ${this.gdriveToken}`}});
-      const sj=await searchRes.json(); const file=sj.files?.[0];
-      if (!file){this.showToast('Nenhum backup encontrado','error');return;}
-      const fileRes=await fetch(`https://www.googleapis.com/drive/v3/files/${file.id}?alt=media`,{headers:{Authorization:`Bearer ${this.gdriveToken}`}});
-      this.importData(await fileRes.text());
-      localStorage.setItem('foco_last_sync',Date.now().toString());
-    }catch(e){this.showToast('❌ Erro: '+e.message,'error');}
-  },
-
   // ===================== MODALS =====================
   renderModal() {
     const m=this.state.modal; if (!m) return '';
-    return {addTask:()=>this.renderAddTaskModal(),logProgress:()=>this.renderLogProgressModal(),logBible:()=>this.renderLogBibleModal(),logWords:()=>this.renderLogWordsModal(),defineConversion:()=>this.renderDefineConversionModal(),suggestion:()=>this.renderSuggestionModal(),missedTask:()=>this.renderMissedTaskModal(),insights:()=>this.renderInsightsModal(),sync:()=>this.renderSyncModal(),pasteImport:()=>this.renderPasteImportModal(),gdriveSetup:()=>this.renderGdriveSetupModal(),finishTime:()=>this.renderFinishTimeModal(),taskDetail:()=>this.renderTaskDetailModal(),medalDetail:()=>this.renderMedalDetailModal(),recalculate:()=>this.renderRecalculateModal()}[m.type]?.()??'';
+    const modals = {
+      [MODALS.addTask]:()=>this.renderAddTaskModal(),
+      [MODALS.logProgress]:()=>this.renderLogProgressModal(),
+      [MODALS.logBible]:()=>this.renderLogBibleModal(),
+      [MODALS.logWords]:()=>this.renderLogWordsModal(),
+      [MODALS.defineConversion]:()=>this.renderDefineConversionModal(),
+      [MODALS.suggestion]:()=>this.renderSuggestionModal(),
+      [MODALS.missedTask]:()=>this.renderMissedTaskModal(),
+      [MODALS.insights]:()=>this.renderInsightsModal(),
+      [MODALS.sync]:()=>this.renderSyncModal(),
+      [MODALS.pasteImport]:()=>this.renderPasteImportModal(),
+      [MODALS.finishTime]:()=>this.renderFinishTimeModal(),
+      [MODALS.taskDetail]:()=>this.renderTaskDetailModal(),
+      [MODALS.medalDetail]:()=>this.renderMedalDetailModal(),
+      [MODALS.recalculate]:()=>this.renderRecalculateModal()
+    };
+    if (!modals[m.type]) {
+      console.warn('Modal desconhecido:', m.type);
+      this.state.modal = null;
+      return '';
+    }
+    return modals[m.type]();
   },
   closeModal(){this.state.modal=null;this.state.wizard=null;this.render();},
 
@@ -2007,12 +1927,12 @@ renderManage() {
   // ===================== ADD/EDIT WIZARD =====================
   openAddTask() {
     this.state.wizard={step:1,name:'',type:'simple',goalUnit:'páginas',totalGoal:'',totalPages:0,startOffset:0,daysToComplete:'',distribution:'equal',dailyGoals:[],schedule:'flexible',scheduledTime:'08:00',daysOfWeek:[0,1,2,3,4,5,6],dailyMinutes:'',wordsEnabled:false,wordsTotal:'',wordsOffset:0,wordsDays:'',wordsDistribution:'equal',wordsDailyGoals:[],startDate:this.getSelectedDate()};
-    this.state.modal={type:'addTask'}; this.render();
+    this.state.modal={type:MODALS.addTask}; this.render();
   },
   openEditTask(taskId) {
     const task=this.state.tasks.find(t=>t.id===taskId); if (!task) return;
     this.state.wizard={editId:taskId,step:1,name:task.name,type:task.type,goalUnit:task.goalUnit||'páginas',totalGoal:task.type==='goal'?(task.totalBook||task.dailyGoals.reduce((a,b)=>a+b,0)):'',totalPages:task.totalPages||0,startOffset:task.startOffset||0,daysToComplete:task.type==='goal'?task.dailyGoals.length:'',distribution:'equal',dailyGoals:task.dailyGoals||[],schedule:task.schedule||'flexible',scheduledTime:task.scheduledTime||'08:00',daysOfWeek:task.daysOfWeek||[0,1,2,3,4,5,6],chapterPages:task.chapterPages||[],numChapters:(task.chapterPages&&task.chapterPages.length)||'',dailyMinutes:task.dailyMinutes||'',wordsEnabled:!!(task.wordsDailyGoals&&task.wordsDailyGoals.length),wordsTotal:task.wordsTotal||'',wordsOffset:task.wordsOffset||0,wordsDays:task.wordsDailyGoals?task.wordsDailyGoals.length:'',wordsDistribution:'equal',wordsDailyGoals:task.wordsDailyGoals||[],startDate:task.startDate||this.getToday()};
-    this.state.modal={type:'addTask'}; this.render();
+    this.state.modal={type:MODALS.addTask}; this.render();
   },
   renderAddTaskModal() {
     const w=this.state.wizard, totalSteps=(w.type==='goal'||w.type==='bible')?(w.distribution==='custom'?3:2):(w.type==='simple'&&w.wordsEnabled&&w.wordsDistribution==='custom'&&parseInt(w.wordsDays)>0?3:2), isEdit=!!w.editId;
@@ -2511,7 +2431,7 @@ renderManage() {
   openLogWords(taskId){
     const task=this.state.tasks.find(t=>t.id===taskId); if(!task)return;
     const today=this.getToday(),data=this.getTaskDayData(task.id,today);
-    this.state.modal={type:'logWords',taskId,logAmount:data.wordsProgress||0};
+    this.state.modal={type:MODALS.logWords,taskId,logAmount:data.wordsProgress||0};
     this.render();
   },
   renderLogWordsModal(){
@@ -2563,7 +2483,7 @@ renderManage() {
     
     const pos = getBookAndChapterFromAbsolute(totalReadSoFar || 1);
     this.state.modal={
-      type:'logBible',
+      type:MODALS.logBible,
       taskId,
       cumDoneBefore: startOffset + cumDaysBefore,
       currentPosition: totalReadSoFar,
@@ -2675,7 +2595,7 @@ renderManage() {
     const currentPosition=startOffset+cumDaysBefore+todayProgress;
     // cumDoneBefore in absolute terms = startOffset + cumDaysBefore
     const cumDoneBefore=startOffset+cumDaysBefore;
-    this.state.modal={type:'logProgress',taskId,logMode:'position',logAmount:'',currentPosition,cumDoneBefore,todayProgress,targetDate};
+    this.state.modal={type:MODALS.logProgress,taskId,logMode:'position',logAmount:'',currentPosition,cumDoneBefore,todayProgress,targetDate};
     this.render();
   },
  renderLogProgressModal(){
@@ -2758,17 +2678,6 @@ renderManage() {
     return all;
   },
 
-  // Dado um número de página, retorna em qual unidade (cap., versículo etc) ela está
-  pageToUnit(task,page){
-    const cp=task.chapterPages;
-    if(!cp||cp.length===0)return null;
-    // Encontra o último capítulo cuja página inicial <= page
-    let unit=1;
-    for(let i=0;i<cp.length;i++){
-      if(cp[i]>0&&cp[i]<=page)unit=i+1;
-    }
-    return unit;
-  },
   // Retorna taxa de conversão: quantas unidades-base por 1 unidade alternativa
   // Ex: 1 capítulo = 8 páginas → getConversionRate(task,'cap.') = 8
   getConversionRate(task,unit){
@@ -2891,7 +2800,7 @@ renderManage() {
 
   // Abre modal para definir taxa de conversão de uma unidade alternativa
   openDefineConversion(taskId,unit,date){
-    this.state.modal={type:'defineConversion',taskId,unit,targetDate:date};
+    this.state.modal={type:MODALS.defineConversion,taskId,unit,targetDate:date};
     this.render();
   },
   renderDefineConversionModal(){
@@ -2927,7 +2836,7 @@ renderManage() {
   },
 
   // ===================== TASK DETAIL =====================
-  openTaskDetail(taskId){this.state.modal={type:'taskDetail',taskId};this.render();},
+  openTaskDetail(taskId){this.state.modal={type:MODALS.taskDetail,taskId};this.render();},
 
   fmtDate(dateStr){const[y,m,d]=dateStr.split('-').map(Number);return new Date(y,m-1,d).toLocaleDateString('pt-BR',{day:'numeric',month:'short'});},
   fmtDateLong(dateStr){const[y,m,d]=dateStr.split('-').map(Number);return new Date(y,m-1,d).toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'});},
@@ -3185,7 +3094,7 @@ renderManage() {
   },
 
   // ===================== SUGGESTION / MISSED =====================
-  openSuggestion(taskId){this.state.modal={type:'suggestion',taskId};this.render();},
+  openSuggestion(taskId){this.state.modal={type:MODALS.suggestion,taskId};this.render();},
   renderSuggestionModal(){
     const m=this.state.modal,task=this.state.tasks.find(t=>t.id===m.taskId); if(!task)return'';
     const info=this.getMissedInsights().find(i=>i.task.id===m.taskId);
@@ -3221,7 +3130,7 @@ renderManage() {
         const key=`missed_${task.id}_${today}`;
         if(!localStorage.getItem(key)){
           localStorage.setItem(key,'1');
-          if(!this.state.modal) this.state.modal={type:'missedTask',taskId:task.id};
+        if(!this.state.modal) this.state.modal={type:MODALS.missedTask,taskId:task.id};
         }
       }
     });
@@ -3245,7 +3154,7 @@ renderManage() {
   missedReschedule(taskId){const task=this.state.tasks.find(t=>t.id===taskId);if(!task)return;const t=prompt('Novo horário (ex: 20:00):',this.getNow());if(t){task.scheduledTime=t;this.save();}this.closeModal();this.render();},
   missedMakeFlexible(taskId){const task=this.state.tasks.find(t=>t.id===taskId);if(task){task.schedule='flexible';task.scheduledTime=null;this.save();}this.closeModal();this.render();},
   missedSkip(taskId){this.setTaskDayData(taskId,this.getToday(),{skipped:true});this.save();this.closeModal();this.render();},
-  openInsights(){this.state.modal={type:'insights'};this.render();},
+  openInsights(){this.state.modal={type:MODALS.insights};this.render();},
   renderInsightsModal(){
     const insights=this.getMissedInsights();
     return `<div class="overlay" onclick="if(event.target===this)App.closeModal()">
@@ -3254,7 +3163,7 @@ renderManage() {
         <div class="modal-title">💡 Sugestões da semana</div>
         <div class="option-list">
           ${insights.map(({task,missed,total})=>`
-            <button class="option-btn" onclick="App.state.modal={type:'suggestion',taskId:'${task.id}'};App.render()">
+            <button class="option-btn" onclick="App.state.modal={type:MODALS.suggestion,taskId:'${task.id}'};App.render()">
               <span class="opt-icon">⚠️</span>
               <div><b>${task.name}</b><br><small style="color:var(--muted)">Perdida ${missed} de ${total} dias</small></div>
             </button>`).join('')}
@@ -3266,7 +3175,7 @@ renderManage() {
 
   // ===================== MEDALS VIEW =====================
   openMedalDetail(taskId){
-    this.state.modal={type:'medalDetail',taskId};
+    this.state.modal={type:MODALS.medalDetail,taskId};
     this.render();
   },
   renderMedalDetailModal(){
@@ -3397,7 +3306,7 @@ renderManage() {
       if (todayIdx >= 0 && todayIdx < task.dailyGoals.length) {
         task.dailyGoals[todayIdx] += backlog;
       }
-      localStorage.setItem(`foco_recalc_${task.id}_${yesterday}`, '1');
+      localStorage.setItem(`${STORAGE_KEYS.recalcPrefix}${task.id}_${yesterday}`, '1');
       this.save();
     }
   },
@@ -3418,7 +3327,7 @@ renderManage() {
           const yesterdayGoal = task.dailyGoals[yesterdayIdx];
           
           if (yesterdayProgress < yesterdayGoal) {
-            const key = `foco_recalc_${task.id}_${yesterday}`;
+            const key = `${STORAGE_KEYS.recalcPrefix}${task.id}_${yesterday}`;
             if (!localStorage.getItem(key)) {
               // Silently auto-recalculate in background!
               this.applyAutoRecalculateBackground(task.id, yesterday, yesterdayGoal - yesterdayProgress);
@@ -3465,7 +3374,7 @@ renderManage() {
       const remainingDays = task.dailyGoals.length - todayIdx;
       
       this.state.modal = {
-        type: 'recalculate',
+        type: MODALS.recalculate,
         taskId: task.id,
         yesterday: backlogTask.yesterday,
         backlog: backlogTask.backlog,
@@ -3544,7 +3453,7 @@ renderManage() {
         }
       });
       
-      localStorage.setItem(`foco_recalc_${task.id}_${m.yesterday}`, '1');
+      localStorage.setItem(`${STORAGE_KEYS.recalcPrefix}${m.taskId}_${m.yesterday}`, '1');
       this.save();
       this.closeModal();
       this.render();
