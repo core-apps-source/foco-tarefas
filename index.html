@@ -28,6 +28,16 @@
 <link rel="icon" type="image/png" href="./learning.png">
 <link rel="manifest" href="./manifest.json">
 <meta name="theme-color" content="#ff6bb3">
+<script>
+  (function(){
+    const colors={rosa:'#ff6bb3',laranja:'#ff9f43',azul:'#3b82f6',vermelho:'#ef4444',lilas:'#c084fc',cinza:'#4b4b4d'};
+    try {
+      const saved=JSON.parse(localStorage.getItem('foco_v2')||'{}');
+      const color=colors[saved.theme]||colors.rosa;
+      document.querySelector('meta[name="theme-color"]').setAttribute('content',color);
+    } catch(e) {}
+  })();
+</script>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -403,12 +413,21 @@ const MODALS = Object.freeze({
 });
 
 const THEMES = {
-  rosa:    { name:'Rosa',     desc:'Rosa suave', swatch:'linear-gradient(90deg,#ff6bb3,#ffb5e6)', fill:'linear-gradient(90deg,#ff6bb3,#ffb5e6)' },
+  rosa:    { name:'Rosa',     desc:'Rosa suave', themeColor:'#ff6bb3', swatch:'linear-gradient(90deg,#ff6bb3,#ffb5e6)', fill:'linear-gradient(90deg,#ff6bb3,#ffb5e6)' },
   laranja: { name:'Laranja',  desc:'Laranja clássico', swatch:'linear-gradient(90deg,#ff9f43,#ffcc70)', fill:'linear-gradient(90deg,#ff9f43,#ffcc70)' },
   azul:    { name:'Azul',     desc:'Azul escuro em gradiente', swatch:'linear-gradient(90deg,#1d4ed8,#3b82f6,#60a5fa)', fill:'linear-gradient(90deg,#3b82f6,#60a5fa)' },
   vermelho:{ name:'Vermelho', desc:'Vermelho intenso', swatch:'linear-gradient(90deg,#dc2626,#f87171)', fill:'linear-gradient(90deg,#ef4444,#f87171)' },
   lilas:   { name:'Lilás',    desc:'Roxo lilás', swatch:'linear-gradient(90deg,#a78bfa,#ddd6fe)', fill:'linear-gradient(90deg,#c084fc,#ddd6fe)' },
   cinza:   { name:'Cinza',    desc:'Cinza neutro', swatch:'linear-gradient(90deg,#64748b,#cbd5e1)', fill:'linear-gradient(90deg,#94a3b8,#cbd5e1)' },
+};
+
+const THEME_COLORS = {
+  rosa: '#ff6bb3',
+  laranja: '#ff9f43',
+  azul: '#3b82f6',
+  vermelho: '#ef4444',
+  lilas: '#c084fc',
+  cinza: '#4b4b4d'
 };
 
 const BIBLE_BOOKS = [
@@ -614,6 +633,7 @@ const App = {
   applyTheme() {
     const t = (this.state && THEMES[this.state.theme]) ? this.state.theme : 'rosa';
     document.documentElement.setAttribute('data-theme', t);
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', THEME_COLORS[t] || THEME_COLORS.rosa);
   },
 
   setTheme(id) {
