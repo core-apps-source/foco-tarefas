@@ -30,7 +30,7 @@
 <meta name="theme-color" content="#ff6bb3">
 <script>
   (function(){
-    const colors={rosa:'#ff6bb3',laranja:'#ff9f43',azul:'#3b82f6',vermelho:'#ef4444',lilas:'#c084fc',cinza:'#4b4b4d'};
+    const colors={rosa:'#ff6bb3',laranja:'#ff9f43',azul:'#3b82f6',vermelho:'#ef4444',lilas:'#c084fc',cinza:'#4b4b4d',botafogo:'#111111'};
     try {
       const saved=JSON.parse(localStorage.getItem('foco_v2')||'{}');
       const color=colors[saved.theme]||colors.rosa;
@@ -66,6 +66,12 @@
 [data-theme="vermelho"]{--accent:#ef4444;--accent2:#dc2626;--accent-light:#f87171;--bg:linear-gradient(165deg,#921111 0%,#150606 42%,#100505 100%);}
 [data-theme="lilas"] {--accent:#c084fc;--accent2:#a78bfa;--accent-light:#ddd6fe;--bg:linear-gradient(165deg,#67209e 0%,#0f0a18 42%,#0c0b14 100%);}
 [data-theme="cinza"] {--accent:#94a3b8;--accent2:#64748b;--accent-light:#cbd5e1;--bg:#4b4b4d;}
+[data-theme="botafogo"] {--accent:#f8fafc;--accent2:#94a3b8;--accent-light:#ffffff;--bg:linear-gradient(165deg,#050505 0%,#111111 30%,#f8fafc 48%,#1a1a1a 60%,#000000 100%);}
+[data-theme="botafogo"] .date-pill.selected .dp-dow,
+[data-theme="botafogo"] .date-pill.selected .dp-num,
+[data-theme="botafogo"] .period-tab.active,
+[data-theme="botafogo"] .check-btn.checked,
+[data-theme="botafogo"] .btn-primary{color:#111;}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 html,body{height:100%;overflow:hidden;}
 body{font-family:var(--font);background:var(--bg);background-attachment:fixed;color:var(--text);display:flex;justify-content:center;align-items:stretch;}
@@ -77,6 +83,7 @@ body{font-family:var(--font);background:var(--bg);background-attachment:fixed;co
 .header-left h1{font-size:22px;font-weight:800;letter-spacing:-0.5px;}
 .header-left h1 span{color:var(--accent);}
 .header-left p{font-size:13px;color:rgba(255,255,255,.55);margin-top:2px;}
+#live-clock{font-size:13px;font-weight:700;color:var(--accent);margin-top:3px;letter-spacing:.5px;font-variant-numeric:tabular-nums;}
 .header-btns{display:flex;gap:8px;}
 .header-btn{width:40px;height:40px;border-radius:12px;background:var(--surface2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:17px;transition:all .15s;}
 .header-btn:hover{background:var(--surface3);}
@@ -98,8 +105,23 @@ body{font-family:var(--font);background:var(--bg);background-attachment:fixed;co
 .task-card.done{opacity:.55;}
 .task-card.done .task-name{text-decoration:line-through;color:var(--muted);}
 .task-card.overdue{border-left:3px solid var(--red);}
+.task-card.overdue-card {
+  border: 1.5px solid var(--red) !important;
+  box-shadow: 0 0 12px rgba(255, 107, 107, 0.2) !important;
+  animation: pulseOverdue 2s infinite ease-in-out;
+}
+.task-card.overdue-card::before {
+  background: var(--red) !important;
+}
+@keyframes pulseOverdue {
+  0%, 100% { box-shadow: 0 0 6px rgba(255, 107, 107, 0.15); }
+  50% { box-shadow: 0 0 14px rgba(255, 107, 107, 0.4); }
+}
 .task-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent);opacity:0;}
 .task-card.goal-card::before{opacity:1;}
+.task-card.rest-day{opacity:.65;border-style:dashed;}
+.task-card.rest-day::before{background:var(--muted);}
+.task-card.rest-day .task-name{text-decoration:none;color:var(--muted);}
 .check-btn{width:26px;height:26px;border-radius:8px;border:2px solid var(--surface3);display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;transition:all .15s;font-size:14px;}
 .check-btn:hover{border-color:var(--accent);}
 .check-btn.checked{background:var(--accent);border-color:var(--accent);color:#fff;}
@@ -214,6 +236,7 @@ body{font-family:var(--font);background:var(--bg);background-attachment:fixed;co
 .chip{display:inline-flex;align-items:center;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:2px 8px;font-size:11px;font-weight:600;color:var(--muted);}
 .chip.green{background:rgba(46,213,115,.1);color:var(--green);border-color:rgba(46,213,115,.2);}
 .chip.orange{background:color-mix(in srgb,var(--accent) 10%,transparent);color:var(--accent);border-color:color-mix(in srgb,var(--accent) 20%,transparent);}
+.chip.red{background:rgba(255,107,107,.15);color:var(--red);border-color:rgba(255,107,107,.35);}
 .wizard-steps{display:flex;gap:6px;margin-bottom:20px;}
 .wizard-step{height:3px;flex:1;border-radius:999px;background:var(--surface3);}
 .wizard-step.done{background:var(--accent);}
@@ -223,6 +246,7 @@ body{font-family:var(--font);background:var(--bg);background-attachment:fixed;co
 .toast.success{background:rgba(46,213,115,.15);color:var(--green);border-color:rgba(46,213,115,.3);}
 .toast.error{background:rgba(255,107,107,.15);color:var(--red);border-color:rgba(255,107,107,.3);}
 @keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(-8px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+@keyframes congratsBouce{0%{transform:scale(0.3);opacity:0}60%{transform:scale(1.15)}100%{transform:scale(1);opacity:1}}
 .data-textarea{width:100%;height:90px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:10px 12px;font-family:monospace;font-size:11px;color:var(--muted);resize:none;outline:none;}
 .data-textarea:focus{border-color:var(--accent);color:var(--text);}
 /* ===== TASK DETAIL MODAL ===== */
@@ -409,7 +433,8 @@ const MODALS = Object.freeze({
   finishTime: 'finishTime',
   taskDetail: 'taskDetail',
   medalDetail: 'medalDetail',
-  recalculate: 'recalculate'
+  recalculate: 'recalculate',
+  goalCongrats: 'goalCongrats'
 });
 
 const THEMES = {
@@ -419,6 +444,7 @@ const THEMES = {
   vermelho:{ name:'Vermelho', desc:'Vermelho intenso', swatch:'linear-gradient(90deg,#dc2626,#f87171)', fill:'linear-gradient(90deg,#ef4444,#f87171)' },
   lilas:   { name:'Lilás',    desc:'Roxo lilás', swatch:'linear-gradient(90deg,#a78bfa,#ddd6fe)', fill:'linear-gradient(90deg,#c084fc,#ddd6fe)' },
   cinza:   { name:'Cinza',    desc:'Cinza neutro', swatch:'linear-gradient(90deg,#64748b,#cbd5e1)', fill:'linear-gradient(90deg,#94a3b8,#cbd5e1)' },
+  botafogo:{ name:'Botafogo', desc:'Preto e branco', swatch:'linear-gradient(90deg,#ffffff,#111111,#000000,#ffffff)', fill:'linear-gradient(90deg,#ffffff,#94a3b8)' },
 };
 
 const THEME_COLORS = {
@@ -427,7 +453,8 @@ const THEME_COLORS = {
   azul: '#3b82f6',
   vermelho: '#ef4444',
   lilas: '#c084fc',
-  cinza: '#4b4b4d'
+  cinza: '#4b4b4d',
+  botafogo: '#111111'
 };
 
 const BIBLE_BOOKS = [
@@ -669,6 +696,41 @@ const App = {
     return Math.round((parse(b)-parse(a))/86400000);
   },
 
+  distributeGoals(total, days, startDate, daysOfWeek) {
+    const activeDows = (daysOfWeek && daysOfWeek.length > 0) ? daysOfWeek : [0,1,2,3,4,5,6];
+    const activeIndices = [];
+    for (let i = 0; i < days; i++) {
+      const date = this.addDays(startDate, i);
+      const [yr, mo, da] = date.split('-').map(Number);
+      const dow = new Date(yr, mo - 1, da).getDay();
+      if (activeDows.includes(dow)) {
+        activeIndices.push(i);
+      }
+    }
+    const goals = Array.from({ length: days }, () => 0);
+    if (activeIndices.length === 0) {
+      const eq = Math.floor(total / days);
+      const rem = total - eq * (days - 1);
+      for (let i = 0; i < days; i++) {
+        goals[i] = i === days - 1 ? rem : eq;
+      }
+      return goals;
+    }
+    const count = activeIndices.length;
+    const eq = Math.floor(total / count);
+    let distributed = 0;
+    for (let idx = 0; idx < count; idx++) {
+      const i = activeIndices[idx];
+      if (idx === count - 1) {
+        goals[i] = total - distributed;
+      } else {
+        goals[i] = eq;
+        distributed += eq;
+      }
+    }
+    return goals;
+  },
+
   getNow() {
     const d = new Date();
     return d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0');
@@ -744,12 +806,10 @@ const App = {
   },
   setWordsDay(i,val){
     this.state.wizard.wordsDailyGoals[i]=val;
-    const totalW=parseInt(this.state.wizard.wordsTotal)||0,offsetW=parseInt(this.state.wizard.wordsOffset)||0;
-    const remaining=totalW-offsetW,sum=this.state.wizard.wordsDailyGoals.reduce((a,b)=>a+b,0),diff=sum-remaining;
-    const el=document.getElementById('dist-total-el');
-    if(el){el.className=`dist-total ${Math.abs(diff)<=1?'ok':'over'}`;el.textContent=Math.abs(diff)<=1?'✓ Total correto: '+sum+' palavras':(diff>0?'▲ Excedendo: ':'▼ Faltando: ')+Math.abs(diff)+' palavras';}
+    const focusedId=document.activeElement?document.activeElement.id:null;
+    this.render();
+    if(focusedId){const element=document.getElementById(focusedId);if(element){element.focus();if(element.setSelectionRange&&element.type!=='number'&&element.type!=='time')try{element.setSelectionRange(element.value.length,element.value.length);}catch(e){}}}
   },
-  // medalha proporcional à meta do dia
   getMedal(progress, dayGoal){
     if(!dayGoal||progress<=0)return null;
     if(progress>dayGoal)  return{cls:'platinum',icon:'💎',label:'Platinum'};
@@ -758,7 +818,6 @@ const App = {
     return                       {cls:'bronze', icon:'🥉',label:'Bronze'};
   },
   getMedalRanking(year, month){
-    // Retorna [{task, counts:{bronze,prata,ouro,platinum}, score}] ordenado por score
     const pad=n=>String(n).padStart(2,'0');
     const prefix=`${year}-${pad(month)}-`;
     const daysInMonth=new Date(year,month,0).getDate();
@@ -831,13 +890,16 @@ const App = {
   isTaskDayDone(task, date) {
     const d = this.getTaskDayData(task.id, date);
     if (task.type === 'simple') return !!d.completed;
+    const goal = this.getTaskGoalForDay(task, date);
+    if (goal <= 0) return true;
     // For goals, only consider it done if it was explicitly finished (finishedTime or completed flag)
     return !!d.finishedTime || !!d.completed;
   },
 
   getGoalCompletionFraction(task, date) {
     const d = this.getTaskDayData(task.id, date);
-    const goal = this.getTaskGoalForDay(task, date) || 1;
+    const goal = this.getTaskGoalForDay(task, date);
+    if (goal <= 0) return 1;
     const prog = d.progress || 0;
     if (prog >= goal) {
       // If reached goal but not marked finished, count slightly less than full to avoid counting as done
@@ -857,6 +919,28 @@ const App = {
     if (time) update.finishedTime = time;
     if (timeSpent) update.timeSpent = timeSpent;
     if (Object.keys(update).length) { this.setTaskDayData(taskId,date,update); this.save(); }
+
+    // Verifica se esse era o último dia da meta
+    const task = this.state.tasks.find(t => t.id === taskId);
+    if (task && (task.type === 'goal' || task.type === 'bible')) {
+      const idx = this.daysDiff(task.startDate, date);
+      const isLastDay = idx === task.dailyGoals.length - 1;
+      if (isLastDay) {
+        // Calcula progresso total
+        let totalDone = 0;
+        for (let i = 0; i < task.dailyGoals.length; i++) {
+          const d = this.addDays(task.startDate, i);
+          totalDone += (this.getTaskDayData(task.id, d).progress || 0);
+        }
+        const totalGoal = task.dailyGoals.reduce((a, b) => a + b, 0);
+        if (totalDone >= totalGoal) {
+          this.state.modal = { type: MODALS.goalCongrats, taskId };
+          this.render();
+          return;
+        }
+      }
+    }
+
     this.closeModal(); this.render();
   },
   getBestTimeData() {
@@ -1078,6 +1162,7 @@ const App = {
         <div class="header-left">
           <h1>Foco<span>.</span></h1>
           <p>${isToday ? dateLabel : dateLabel + (isFuture?' · prévia':' · histórico')}</p>
+          <div id="live-clock"></div>
         </div>
         <div class="header-btns">
           ${isToday ? `<div class="header-btn" onclick="App.triggerBacklogCheckManual()" title="Gerenciar Atrasos" style="font-size:16px">⚡</div>` : ''}
@@ -1297,7 +1382,7 @@ const App = {
     } else if (task.type === 'bible') {
       const goal=this.getTaskGoalForDay(task,date),progress=data.progress||0;
       const pct=goal>0?Math.min(100,Math.round((progress/goal)*100)):0;
-      const isFull=pct>=100 && (data.finishedTime || data.completed);
+      const isFull = goal <= 0 ? (data.finishedTime || data.completed) : (pct>=100 && (data.finishedTime || data.completed));
       const idx=this.daysDiff(task.startDate,date);
       const ftBadge=data.finishedTime&&pct>=100?`<span class="done-time-chip">✓ ${data.finishedTime}</span>`:'';
       const timeSpentBadge=data.timeSpent&&isFull?`<span class="done-time-chip" style="background:rgba(139,124,246,.12);color:var(--accent2);border-color:rgba(139,124,246,.25)">⏱ ${data.timeSpent>=60?(Math.floor(data.timeSpent/60)+'h'+(data.timeSpent%60>0?data.timeSpent%60+'min':'')):data.timeSpent+'min'}</span>`:'';
@@ -1329,24 +1414,37 @@ const App = {
         }
         rangeLabel = `📖 ${rangeText}`;
       } else {
-        rangeLabel = 'Nenhum capítulo hoje';
+        rangeLabel = 'Folga';
       }
       
       const totalReadSoFar=startOffset+cumDaysBefore+progress;
       const globalPct=Math.min(100,Math.round((totalReadSoFar/totalBook)*100));
-      const displayPct = isFull ? 100 : pct;
+      const displayPct = (goal <= 0) ? 100 : (isFull ? 100 : pct);
       
       const currentBookInfo = getBookAndChapterFromAbsolute(totalReadSoFar || 1);
       const barLabel = `Lido até ${currentBookInfo.bookName} ${currentBookInfo.chapter} · ${totalReadSoFar}/${totalBook} caps`;
       
       const medal=this.getMedal(progress,goal);
       const medalBadge=medal?`<span class="medal-badge ${medal.cls}">${medal.icon} ${medal.label}</span>`:'';
+      const isOverdue=this.isTaskOverdue(task,date);
+      const overdueClass=isOverdue?'overdue-card':'';
+      const overdueBadge=isOverdue?`<span class="chip red">⚠️ Em Atraso</span>`:'';
+      const activeBlock = task.blocks ? this.getActiveBlock(task) : null;
+      const blockBadge = activeBlock ? `<span class="task-time-badge" style="background:color-mix(in srgb,var(--accent2) 15%,transparent);color:var(--accent2)">📦 ${activeBlock.label}</span>` : '';
+
+      let goalText = '';
+      if (goal <= 0) {
+        goalText = progress > 0 ? `🍀 Folga · +${progress} capítulos` : `🌴 Folga (sem meta hoje)`;
+      } else {
+        goalText = `${progress} / ${goal} capítulos hoje`;
+      }
       
-      return `<div class="task-card goal-card ${isFull?'done':''}">
+      return `<div class="task-card goal-card ${(isFull || goal <= 0) ? 'done' : ''} ${goal <= 0 ? 'rest-day' : ''} ${overdueClass}">
         <div class="task-body" onclick="App.openTaskDetail('${task.id}')" style="cursor:pointer">
           <div class="task-name">${task.name}</div>
           <div class="task-sub">
-            <span class="chip ${isFull?'green':'orange'}">Dia ${idx+1}/${task.dailyGoals.length}</span>
+            ${isOverdue?overdueBadge:`<span class="chip ${(isFull || goal <= 0) ? 'green' : 'orange'}">Dia ${idx+1}/${task.dailyGoals.length}</span>`}
+            ${blockBadge}
             ${dowBadge}
             ${task.schedule==='fixed'?`<span class="task-time-badge">⏰ ${task.scheduledTime}</span>`:`<span class="task-time-badge">🔄 Flexível</span>`}
             <span class="task-time-badge" style="background:var(--surface3)">${rangeLabel}</span>
@@ -1354,7 +1452,7 @@ const App = {
           </div>
           <div class="goal-bar-wrap">
             <div class="goal-bar-top">
-              <span>${progress} / ${goal} capítulos hoje</span>
+              <span>${goalText}</span>
               <span style="color:var(--muted);font-size:10px">${barLabel} · <b style="color:var(--accent)">${displayPct}%</b></span>
             </div>
             <div class="goal-bar"><div class="goal-bar-fill ${displayPct>=100?'full':''}" style="width:${displayPct}%"></div></div>
@@ -1369,7 +1467,7 @@ const App = {
     } else {
       const goal=this.getTaskGoalForDay(task,date),progress=data.progress||0;
       const pct=goal>0?Math.min(100,Math.round((progress/goal)*100)):0;
-      const isFull=pct>=100 && (data.finishedTime || data.completed);
+      const isFull = goal <= 0 ? (data.finishedTime || data.completed) : (pct>=100 && (data.finishedTime || data.completed));
       const idx=this.daysDiff(task.startDate,date);
       const ftBadge=data.finishedTime&&pct>=100?`<span class="done-time-chip">✓ ${data.finishedTime}</span>`:'';
       const timeSpentBadge=data.timeSpent&&isFull?`<span class="done-time-chip" style="background:rgba(139,124,246,.12);color:var(--accent2);border-color:rgba(139,124,246,.25)">⏱ ${data.timeSpent>=60?(Math.floor(data.timeSpent/60)+'h'+(data.timeSpent%60>0?data.timeSpent%60+'min':'')):data.timeSpent+'min'}</span>`:'';
@@ -1388,13 +1486,13 @@ const App = {
       // Absolute position range for today's goal
       const absRangeStart=startOffset+cumDaysBefore+1;
       const absRangeEnd=startOffset+cumDaysBefore+goal;
-      const rangeLabel=`📖 ${absRangeStart}–${absRangeEnd}`;
+      const rangeLabel = goal > 0 ? `📖 ${absRangeStart}–${absRangeEnd}` : 'Folga';
 
       // Global progress bar: totalRead (offset + all days done) / totalBook
       const totalReadSoFar=startOffset+cumDaysBefore+progress;
       const globalPct=totalBook>0?Math.min(100,Math.round((totalReadSoFar/totalBook)*100)):pct;
       const globalPctDisplay=totalBook>0?globalPct:pct;
-      const displayPct = isFull ? 100 : pct;
+      const displayPct = (goal <= 0) ? 100 : (isFull ? 100 : pct);
 
       // Toggle de exibição: páginas ou capítulo
       if(!this.state.barModes)this.state.barModes={};
@@ -1414,20 +1512,33 @@ const App = {
       const barToggle=hasChapters?` onclick="event.stopPropagation();App.toggleBarMode('${task.id}')" style="cursor:pointer;user-select:none" title="Clique para alternar"`:'';
       const medal=this.getMedal(progress,goal);
       const medalBadge=medal?`<span class="medal-badge ${medal.cls}">${medal.icon} ${medal.label}</span>`:'';
+      const isOverdue=this.isTaskOverdue(task,date);
+      const overdueClass=isOverdue?'overdue-card':'';
+      const overdueBadge=isOverdue?`<span class="chip red">⚠️ Em Atraso</span>`:'';
+      const activeBlock = task.blocks ? this.getActiveBlock(task) : null;
+      const blockBadge = activeBlock ? `<span class="task-time-badge" style="background:color-mix(in srgb,var(--accent2) 15%,transparent);color:var(--accent2)">📦 ${activeBlock.label}</span>` : '';
 
-      return `<div class="task-card goal-card ${isFull?'done':''}">
+      let goalText = '';
+      if (goal <= 0) {
+        goalText = progress > 0 ? `🍀 Folga · +${progress} ${task.goalUnit} extras` : `🌴 Folga (sem meta hoje)`;
+      } else {
+        goalText = `${progress} / ${goal} ${task.goalUnit} hoje`;
+      }
+
+      return `<div class="task-card goal-card ${(isFull || goal <= 0) ? 'done' : ''} ${goal <= 0 ? 'rest-day' : ''} ${overdueClass}">
         <div class="task-body" onclick="App.openTaskDetail('${task.id}')" style="cursor:pointer">
           <div class="task-name">${task.name}</div>
           <div class="task-sub">
-           <span class="chip ${isFull?'green':'orange'}">Dia ${idx+1}/${task.dailyGoals.length}</span>
+            ${isOverdue?overdueBadge:`<span class="chip ${(isFull || goal <= 0) ? 'green' : 'orange'}">Dia ${idx+1}/${task.dailyGoals.length}</span>`}
+            ${blockBadge}
             ${dowBadge}
             ${task.schedule==='fixed'?`<span class="task-time-badge">⏰ ${task.scheduledTime}</span>`:`<span class="task-time-badge">🔄 Flexível</span>`}
-            ${task.goalUnit!=='min'?`<span class="task-time-badge" style="background:var(--surface3)">${rangeLabel} ${task.goalUnit}</span>`:''}
+            ${task.goalUnit!=='min'?`<span class="task-time-badge" style="background:var(--surface3)">${goal > 0 ? `${rangeLabel} ${task.goalUnit}` : 'Folga'}</span>`:''}
             ${medalBadge}${ftBadge}${timeSpentBadge}
           </div>
           <div class="goal-bar-wrap">
             <div class="goal-bar-top">
-              <span>${progress} / ${goal} ${task.goalUnit} hoje</span>
+              <span>${goalText}</span>
               <span style="color:var(--muted);font-size:10px"${barToggle}>${barLabel}${barToggle?` <span style="font-size:9px;opacity:.5">↕</span>`:''} · <b style="color:var(--accent)">${displayPct}%</b></span>
             </div>
             <div class="goal-bar"><div class="goal-bar-fill ${displayPct>=100?'full':''}" style="width:${displayPct}%"></div></div>
@@ -1878,7 +1989,8 @@ renderManage() {
       [MODALS.finishTime]:()=>this.renderFinishTimeModal(),
       [MODALS.taskDetail]:()=>this.renderTaskDetailModal(),
       [MODALS.medalDetail]:()=>this.renderMedalDetailModal(),
-      [MODALS.recalculate]:()=>this.renderRecalculateModal()
+      [MODALS.recalculate]:()=>this.renderRecalculateModal(),
+      [MODALS.goalCongrats]:()=>this.renderGoalCongratsModal()
     };
     if (!modals[m.type]) {
       console.warn('Modal desconhecido:', m.type);
@@ -2040,6 +2152,14 @@ renderManage() {
             </select>
           </div>
         </div>
+        <div class="form-group">
+          <label class="form-label">📦 Modo de leitura</label>
+          <div class="toggle-group">
+            <button class="toggle-btn ${!w.useBlocks?'active':''}" onclick="App.setWizard('useBlocks',false)">📅 Prazo único</button>
+            <button class="toggle-btn ${w.useBlocks?'active':''}" onclick="App.setWizard('useBlocks',true)">📦 Em Blocos</button>
+          </div>
+        </div>
+        ${!w.useBlocks ? `
         <div class="form-group"><label class="form-label">📅 Prazo para concluir</label>
           <div style="display:flex;align-items:center;gap:8px">
             <input class="form-input" type="number" min="1" placeholder="Ex: 365" value="${w.daysToComplete||365}" oninput="App.state.wizard.daysToComplete=parseInt(this.value)||1" style="max-width:120px">
@@ -2051,7 +2171,11 @@ renderManage() {
             <button class="toggle-btn ${w.distribution==='equal'?'active':''}" onclick="App.setWizard('distribution','equal')">Igual por dia</button>
             <button class="toggle-btn ${w.distribution==='custom'?'active':''}" onclick="App.setWizard('distribution','custom')">Personalizada</button>
           </div>
+        </div>` : `
+        <div style="background:color-mix(in srgb,var(--accent) 8%,transparent);border:1px solid color-mix(in srgb,var(--accent) 20%,transparent);border-radius:12px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--muted);line-height:1.5">
+          📦 Cada bloco tem um trecho e um prazo. Ao completar um bloco o próximo começa automaticamente.
         </div>
+        ${this.renderBlocksEditor('bible', parseInt(w.startOffset)||0)}`}
         <button class="btn-primary" onclick="App.wizardNext()">Continuar →</button>
         <button class="btn-secondary" onclick="App.setWizardStep(1)">← Voltar</button>`;
     } else if (w.step===2&&w.type==='goal') {
@@ -2121,13 +2245,25 @@ renderManage() {
             <button class="toggle-btn ${w.distribution==='custom'?'active':''}" onclick="App.setWizard('distribution','custom')">Personalizada</button>
           </div>
         </div>
+        <div class="form-group">
+          <label class="form-label">📦 Modo de leitura</label>
+          <div class="toggle-group">
+            <button class="toggle-btn ${!w.useBlocks?'active':''}" onclick="App.setWizard('useBlocks',false)">📅 Prazo único</button>
+            <button class="toggle-btn ${w.useBlocks?'active':''}" onclick="App.setWizard('useBlocks',true)">📦 Em Blocos</button>
+          </div>
+        </div>
+        ${w.useBlocks ? `
+        <div style="background:color-mix(in srgb,var(--accent) 8%,transparent);border:1px solid color-mix(in srgb,var(--accent) 20%,transparent);border-radius:12px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--muted);line-height:1.5">
+          📦 Cada bloco tem uma quantidade e um prazo. O prazo único acima é ignorado quando blocos estão ativos.
+        </div>
+        ${this.renderBlocksEditor('goal', parseInt(w.startOffset)||0)}` : ''}
         <button class="btn-primary" onclick="App.wizardNext()">Continuar →</button>
         <button class="btn-secondary" onclick="App.setWizardStep(1)">← Voltar</button>`;
     } else if (w.step===3&&w.type==='bible'&&w.distribution==='custom') {
       const total=1189;
       const offset=parseInt(w.startOffset)||0;
       const remaining=total-offset,days=parseInt(w.daysToComplete)||1;
-      if(w.dailyGoals.length!==days){const eq=Math.floor(remaining/days),rem=remaining-eq*(days-1);w.dailyGoals=Array.from({length:days},(_,i)=>i===days-1?rem:eq);}
+      if(w.dailyGoals.length!==days){w.dailyGoals=this.distributeGoals(remaining,days,w.startDate,w.daysOfWeek);}
       const currentSum=w.dailyGoals.reduce((a,b)=>a+b,0),diff=currentSum-remaining;
       const today=this.getToday(),dayNames=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
       
@@ -2145,7 +2281,7 @@ renderManage() {
           const absEnd=offset+w.dailyGoals.slice(0,i+1).reduce((a,b)=>a+b,0);
           
           let rangeText='';
-          if (absEnd >= absStart) {
+          if (g > 0 && absEnd >= absStart) {
             const startBookInfo = getBookAndChapterFromAbsolute(absStart);
             const endBookInfo = getBookAndChapterFromAbsolute(absEnd);
             if (startBookInfo.bookId === endBookInfo.bookId) {
@@ -2156,11 +2292,11 @@ renderManage() {
               rangeText = `${startBookInfo.bookName} ${startBookInfo.chapter} – ${endBookInfo.bookName} ${endBookInfo.chapter}`;
             }
           } else {
-            rangeText = 'Nenhum';
+            rangeText = 'Folga';
           }
           
           return `<div class="dist-day-row"><div class="dist-day-label">${lbl}</div>
-            <input class="dist-day-input" type="number" min="0" value="${g}" onchange="App.setDayGoal(${i},parseInt(this.value)||0)" style="max-width:80px">
+            <input class="dist-day-input" id="dist-day-input-${i}" type="number" min="0" value="${g}" onchange="App.setDayGoal(${i},parseInt(this.value)||0)" style="max-width:80px">
             <span style="font-size:11px;color:var(--muted);min-width:120px;text-align:right">${rangeText}</span></div>`;
         }).join('')}
         </div>
@@ -2171,7 +2307,7 @@ renderManage() {
       const offset=parseInt(w.startOffset)||0;
       const total=totalBook-offset; // what remains to be distributed
       const days=parseInt(w.daysToComplete)||1;
-      if (w.dailyGoals.length!==days){const eq=Math.floor(total/days),rem=total-eq*(days-1);w.dailyGoals=Array.from({length:days},(_,i)=>i===days-1?rem:eq);}
+      if (w.dailyGoals.length!==days){w.dailyGoals=this.distributeGoals(total,days,w.startDate,w.daysOfWeek);}
       const currentSum=w.dailyGoals.reduce((a,b)=>a+b,0), diff=currentSum-total;
       const today=this.getToday(), dayNames=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
       content=`<div class="modal-title">Distribuição personalizada</div>
@@ -2182,15 +2318,16 @@ renderManage() {
         ${w.dailyGoals.map((g,i)=>{const date=this.addDays(today,i);const [yr,mo,da]=date.split('-').map(Number);const lbl=i===0?'Hoje':dayNames[new Date(yr,mo-1,da).getDay()];
           const absStart=offset+w.dailyGoals.slice(0,i).reduce((a,b)=>a+b,0)+1;
           const absEnd=offset+w.dailyGoals.slice(0,i+1).reduce((a,b)=>a+b,0);
+          const rangeLabel=g>0?`${absStart}–${absEnd}`:`<span style="color:var(--muted);font-style:italic">folga</span>`;
           return `<div class="dist-day-row"><div class="dist-day-label">${lbl}</div>
-            <input class="dist-day-input" type="number" min="0" value="${g}" onchange="App.setDayGoal(${i},parseInt(this.value)||0)">
-            <span style="font-size:11px;color:var(--muted);min-width:60px">${absStart}–${absEnd}</span></div>`;}).join('')}
+            <input class="dist-day-input" id="dist-day-input-${i}" type="number" min="0" value="${g}" onchange="App.setDayGoal(${i},parseInt(this.value)||0)">
+            <span style="font-size:11px;color:var(--muted);min-width:60px">${rangeLabel}</span></div>`;}).join('')}
         <button class="btn-primary" onclick="App.wizardNext()">Continuar →</button>
         <button class="btn-secondary" onclick="App.setWizardStep(2)">← Voltar</button>`;
     } else if (w.step===2&&w.type==='simple'&&w.wordsEnabled&&w.wordsDistribution==='custom') {
       const totalW=parseInt(w.wordsTotal)||0,offsetW=parseInt(w.wordsOffset)||0;
       const remainingW=totalW-offsetW,days=parseInt(w.wordsDays)||1;
-      if(w.wordsDailyGoals.length!==days){const eq=Math.floor(remainingW/days),rem=remainingW-eq*(days-1);w.wordsDailyGoals=Array.from({length:days},(_,i)=>i===days-1?rem:eq);}
+      if(w.wordsDailyGoals.length!==days){w.wordsDailyGoals=this.distributeGoals(remainingW,days,w.startDate,w.daysOfWeek);}
       const currentSum=w.wordsDailyGoals.reduce((a,b)=>a+b,0),diff=currentSum-remainingW;
       const today=this.getToday(),dayNames=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
       content=`<div class="modal-title">Distribuição de palavras</div>
@@ -2200,7 +2337,7 @@ renderManage() {
         </div>
         ${w.wordsDailyGoals.map((g,i)=>{const date=this.addDays(today,i);const[yr,mo,da]=date.split('-').map(Number);const lbl=i===0?'Hoje':dayNames[new Date(yr,mo-1,da).getDay()];
           return `<div class="dist-day-row"><div class="dist-day-label">${lbl}</div>
-            <input class="dist-day-input" type="number" min="0" value="${g}" onchange="App.setWordsDay(${i},parseInt(this.value)||0)">
+            <input class="dist-day-input" id="dist-words-input-${i}" type="number" min="0" value="${g}" onchange="App.setWordsDay(${i},parseInt(this.value)||0)">
             <span style="font-size:11px;color:var(--muted);min-width:60px">palavras</span></div>`;}).join('')}
         <button class="btn-primary" onclick="App.wizardNext()">Continuar →</button>
         <button class="btn-secondary" onclick="App.setWizardStep(1)">← Voltar</button>`;
@@ -2299,12 +2436,9 @@ renderManage() {
   },
   setDayGoal(i,val){
     this.state.wizard.dailyGoals[i]=val;
-    const offset=parseInt(this.state.wizard.startOffset)||0;
-    const totalBook=parseInt(this.state.wizard.totalGoal)||0;
-    const total=totalBook-offset;
-    const sum=this.state.wizard.dailyGoals.reduce((a,b)=>a+b,0),diff=sum-total;
-    const el=document.getElementById('dist-total-el');
-    if(el){el.className=`dist-total ${Math.abs(diff)<=1?'ok':'over'}`;el.textContent=Math.abs(diff)<=1?'✓ Total correto: '+sum+' '+this.state.wizard.goalUnit:(diff>0?'▲ Excedendo: ':'▼ Faltando: ')+Math.abs(diff)+' '+this.state.wizard.goalUnit;}
+    const focusedId=document.activeElement?document.activeElement.id:null;
+    this.render();
+    if(focusedId){const el=document.getElementById(focusedId);if(el){el.focus();if(el.setSelectionRange&&el.type!=='number'&&el.type!=='time')try{el.setSelectionRange(el.value.length,el.value.length);}catch(e){}}}
   },
   setWizardStep(s){this.state.wizard.step=s;this.render();},
   setWizardBibleBook(bookId) {
@@ -2333,6 +2467,20 @@ renderManage() {
       w.step=99;
     }
     else if(w.step===2&&w.type==='bible'){
+      // Modo blocos: validar blocos
+      if (w.useBlocks) {
+        if (!w.blocks || w.blocks.length === 0) { this.showToast('Adicione ao menos um bloco','error'); return; }
+        const offset = parseInt(w.startOffset)||0;
+        let prev = offset;
+        for (let i = 0; i < w.blocks.length; i++) {
+          const endAt = parseInt(w.blocks[i].endAt)||0;
+          const days = parseInt(w.blocks[i].days)||0;
+          if (endAt <= prev) { this.showToast(`Bloco ${i+1}: o capítulo final deve ser maior que ${prev}`,'error'); return; }
+          if (days <= 0) { this.showToast(`Bloco ${i+1}: informe os dias`,'error'); return; }
+          prev = endAt;
+        }
+        w.step = 99; return;
+      }
       const days=parseInt(w.daysToComplete)||365;
       w.daysToComplete=days; // garante que fique salvo como número válido
       w.step=w.distribution==='custom'?3:99;
@@ -2341,6 +2489,21 @@ renderManage() {
       if(!w.totalGoal||parseInt(w.totalGoal)<=0){this.showToast('Digite a quantidade total','error');return;}
       const offset=parseInt(w.startOffset)||0;
       if(offset>0&&offset>=parseInt(w.totalGoal)){this.showToast('A posição inicial deve ser menor que o total','error');return;}
+      // Modo blocos: validar blocos
+      if (w.useBlocks) {
+        if (!w.blocks || w.blocks.length === 0) { this.showToast('Adicione ao menos um bloco','error'); return; }
+        const total = parseInt(w.totalGoal)||0;
+        let prev = offset;
+        for (let i = 0; i < w.blocks.length; i++) {
+          const endAt = parseInt(w.blocks[i].endAt)||0;
+          const days = parseInt(w.blocks[i].days)||0;
+          if (endAt <= prev) { this.showToast(`Bloco ${i+1}: o final deve ser > ${prev}`,'error'); return; }
+          if (endAt > total) { this.showToast(`Bloco ${i+1}: ultrapassa o total (${total})`,'error'); return; }
+          if (days <= 0) { this.showToast(`Bloco ${i+1}: informe os dias`,'error'); return; }
+          prev = endAt;
+        }
+        w.step = 99; return;
+      }
       if(!w.daysToComplete||parseInt(w.daysToComplete)<=0){this.showToast('Digite o prazo em dias','error');return;}
       const days=parseInt(w.daysToComplete)||30;
       w.daysToComplete=days; // garante que fique salvo como número válido
@@ -2367,17 +2530,21 @@ renderManage() {
     let dailyGoals=[];
     const offset=parseInt(w.startOffset)||0;
     if(w.type==='goal'||w.type==='bible'){
-      const totalBook=w.type==='bible'?1189:parseInt(w.totalGoal);
-      const remaining=totalBook-offset; // pages/chapters left to read
-      let days=parseInt(w.daysToComplete);
-      if (isNaN(days) || days <= 0) {
-        days = w.type === 'bible' ? 365 : 30; // fallback de segurança
-      }
-      if(w.distribution==='custom'&&w.dailyGoals.length===days){
-        dailyGoals=w.dailyGoals.map(Number);
+      // Modo blocos: compila dailyGoals de todos os blocos
+      if (w.useBlocks && w.blocks && w.blocks.length > 0) {
+        dailyGoals = this.buildDailyGoalsFromBlocks();
       } else {
-        const eq=Math.floor(remaining/days),rem=remaining-eq*(days-1);
-        dailyGoals=Array.from({length:days},(_,i)=>i===days-1?rem:eq);
+        const totalBook=w.type==='bible'?1189:parseInt(w.totalGoal);
+        const remaining=totalBook-offset; // pages/chapters left to read
+        let days=parseInt(w.daysToComplete);
+        if (isNaN(days) || days <= 0) {
+          days = w.type === 'bible' ? 365 : 30; // fallback de segurança
+        }
+        if(w.distribution==='custom'&&w.dailyGoals.length===days){
+          dailyGoals=w.dailyGoals.map(Number);
+        } else {
+          dailyGoals=this.distributeGoals(remaining,days,w.startDate,w.daysOfWeek);
+        }
       }
     }
     if(w.editId){
@@ -2385,6 +2552,9 @@ renderManage() {
       if(task){
         Object.assign(task,{name:w.name.trim(),type:w.type,schedule:w.schedule,scheduledTime:w.schedule==='fixed'?w.scheduledTime:null,daysOfWeek:w.daysOfWeek,startDate:w.startDate||task.startDate||today});
         if(w.type==='goal'||w.type==='bible'){          Object.assign(task,{goalUnit:w.goalUnit,dailyGoals,startDate:w.startDate||task.startDate||today,totalBook:w.type==='bible'?1189:parseInt(w.totalGoal),startOffset:offset});
+          // Salva blocos se configurados
+          if (w.useBlocks && w.blocks && w.blocks.length > 0) task.blocks = w.blocks.map(b=>({...b}));
+          else task.blocks = null;
           // Salva chapterPages e monta unitConversions para conversão por página
           if(w.type==='goal'&&w.chapterPages&&w.chapterPages.length>0&&parseInt(w.numChapters)>0){
             const cp=w.chapterPages.map(v=>parseInt(v)||0);
@@ -2403,7 +2573,7 @@ renderManage() {
             const remainingW=totalW-offsetW,days=parseInt(w.wordsDays);
             let wdg;
             if(w.wordsDistribution==='custom'&&w.wordsDailyGoals.length===days){wdg=w.wordsDailyGoals.map(Number);}
-            else{const eq=Math.floor(remainingW/days),rem=remainingW-eq*(days-1);wdg=Array.from({length:days},(_,i)=>i===days-1?rem:eq);}
+            else{wdg=this.distributeGoals(remainingW,days,w.startDate,w.daysOfWeek);}
             task.wordsTotal=totalW;task.wordsOffset=offsetW;task.wordsDailyGoals=wdg;task.startDate=w.startDate||task.startDate||today;
           } else {task.wordsTotal=0;task.wordsDailyGoals=[];}
         }
@@ -2412,6 +2582,8 @@ renderManage() {
       const task={id:this.uid(),name:w.name.trim(),type:w.type,active:true,schedule:w.schedule,scheduledTime:w.schedule==='fixed'?w.scheduledTime:null,daysOfWeek:w.daysOfWeek,startDate:w.startDate||today};
       if(w.type==='goal'||w.type==='bible'){
         Object.assign(task,{goalUnit:w.goalUnit,dailyGoals,startDate:w.startDate||today,totalBook:w.type==='bible'?1189:parseInt(w.totalGoal),startOffset:offset});
+        // Salva blocos se configurados
+        if (w.useBlocks && w.blocks && w.blocks.length > 0) task.blocks = w.blocks.map(b=>({...b}));
         // Salva chapterPages e monta unitConversions para conversão por página
         if(w.type==='goal'&&w.chapterPages&&w.chapterPages.length>0&&parseInt(w.numChapters)>0){
           const cp=w.chapterPages.map(v=>parseInt(v)||0);
@@ -2437,8 +2609,8 @@ renderManage() {
           const totalW=parseInt(w.wordsTotal),offsetW=parseInt(w.wordsOffset)||0;
           const remainingW=totalW-offsetW,days=parseInt(w.wordsDays);
           let wdg;
-          if(w.wordsDistribution==='custom'&&w.wordsDailyGoals.length===days){wdg=w.wordsDailyGoals.map(Number);}
-          else{const eq=Math.floor(remainingW/days),rem=remainingW-eq*(days-1);wdg=Array.from({length:days},(_,i)=>i===days-1?rem:eq);}
+            if(w.wordsDistribution==='custom'&&w.wordsDailyGoals.length===days){wdg=w.wordsDailyGoals.map(Number);}
+            else{wdg=this.distributeGoals(remainingW,days,w.startDate,w.daysOfWeek);}
           task.wordsTotal=totalW;task.wordsOffset=offsetW;task.wordsDailyGoals=wdg;task.startDate=w.startDate||today;
         }
       }
@@ -3569,6 +3741,184 @@ renderManage() {
     </div>`;
   },
 
+  // ===================== BLOCKS EDITOR =====================
+  renderBlocksEditor(type, globalOffset) {
+    const w = this.state.wizard;
+    // Garante inicialização dos blocos
+    if (!w.blocks || w.blocks.length === 0) {
+      const unit = type === 'bible' ? 'capítulos' : (w.goalUnit || 'páginas');
+      const total = type === 'bible' ? 1189 : (parseInt(w.totalGoal) || 0);
+      w.blocks = [{ label: 'Bloco 1', endAt: '', days: '', unit }];
+    }
+    const unit = type === 'bible' ? 'capítulos' : (w.goalUnit || 'páginas');
+    const total = type === 'bible' ? 1189 : (parseInt(w.totalGoal) || 0);
+    const offset = globalOffset || 0;
+
+    // Calcula starts acumulados
+    let cumStart = offset;
+    const rows = w.blocks.map((blk, i) => {
+      const startAt = cumStart + 1;
+      const endAt = parseInt(blk.endAt) || 0;
+      const qty = endAt > cumStart ? endAt - cumStart : 0;
+      const days = parseInt(blk.days) || 0;
+      const perDay = days > 0 && qty > 0 ? Math.ceil(qty / days) : 0;
+
+      let rangeLabel = '';
+      if (type === 'bible' && qty > 0) {
+        const s = getBookAndChapterFromAbsolute(startAt);
+        const e = getBookAndChapterFromAbsolute(endAt);
+        rangeLabel = s.bookId === e.bookId
+          ? `${s.bookName} ${s.chapter}–${e.chapter}`
+          : `${s.bookName} ${s.chapter} – ${e.bookName} ${e.chapter}`;
+      } else if (qty > 0) {
+        rangeLabel = `${startAt}–${endAt} ${unit}`;
+      }
+
+      cumStart = endAt > cumStart ? endAt : cumStart;
+
+      const canDelete = w.blocks.length > 1;
+      return `<div style="background:var(--surface2);border-radius:12px;padding:12px 14px;margin-bottom:8px;border:1px solid var(--border)">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <input class="form-input" style="font-size:13px;font-weight:700;padding:6px 10px;flex:1;margin-right:8px" placeholder="Nome do bloco (ex: Pentateuco)" value="${blk.label||''}" oninput="App.setBlockField(${i},'label',this.value)">
+          ${canDelete ? `<button onclick="App.removeBlock(${i})" style="background:rgba(255,107,107,.15);color:var(--red);border:1px solid rgba(255,107,107,.3);border-radius:8px;padding:6px 10px;cursor:pointer;font-size:12px;font-weight:700;flex-shrink:0">✕</button>` : ''}
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:8px">
+          <div style="flex:1">
+            <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">Até ${unit === 'capítulos' ? 'capítulo' : 'página'} nº</div>
+            <input class="form-input" type="number" min="${cumStart > offset ? cumStart + 1 : offset + 1}" max="${total||9999}" placeholder="Ex: ${i===0?Math.round(total*0.3)||100:total}" value="${blk.endAt||''}" oninput="App.setBlockField(${i},'endAt',this.value)" style="padding:10px;font-size:16px;font-weight:700;text-align:center">
+          </div>
+          <div style="flex:1">
+            <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">Dias do bloco</div>
+            <input class="form-input" type="number" min="1" placeholder="Ex: 30" value="${blk.days||''}" oninput="App.setBlockField(${i},'days',this.value)" style="padding:10px;font-size:16px;font-weight:700;text-align:center">
+          </div>
+        </div>
+        ${qty > 0 ? `<div style="font-size:11px;color:var(--accent);font-weight:600;padding:6px 8px;background:color-mix(in srgb,var(--accent) 8%,transparent);border-radius:8px">
+          ${rangeLabel} · <b>${qty} ${unit}</b>${perDay > 0 ? ` · ~${perDay}/dia` : ''}
+        </div>` : `<div style="font-size:11px;color:var(--muted);font-style:italic;padding:4px 0">Configure o capítulo/página final e os dias do bloco</div>`}
+      </div>`;
+    });
+
+    return `<div class="form-group" id="blocks-editor-wrap">
+      <label class="form-label" style="display:flex;align-items:center;justify-content:space-between">
+        <span>Blocos</span>
+        <button onclick="App.addBlock('${type}')" style="background:color-mix(in srgb,var(--accent) 15%,transparent);color:var(--accent);border:1px solid color-mix(in srgb,var(--accent) 30%,transparent);border-radius:8px;padding:4px 12px;font-size:12px;font-weight:700;cursor:pointer">+ Bloco</button>
+      </label>
+      <div id="blocks-list">${rows.join('')}</div>
+    </div>`;
+  },
+
+  addBlock(type) {
+    const w = this.state.wizard;
+    if (!w.blocks) w.blocks = [];
+    const n = w.blocks.length + 1;
+    const unit = type === 'bible' ? 'capítulos' : (w.goalUnit || 'páginas');
+    w.blocks.push({ label: `Bloco ${n}`, endAt: '', days: '', unit });
+    this.render();
+  },
+
+  removeBlock(i) {
+    const w = this.state.wizard;
+    if (!w.blocks || w.blocks.length <= 1) return;
+    w.blocks.splice(i, 1);
+    this.render();
+  },
+
+  setBlockField(i, field, value) {
+    const w = this.state.wizard;
+    if (!w.blocks || !w.blocks[i]) return;
+    w.blocks[i][field] = value;
+    // Atualiza o editor de blocos no DOM sem re-render completo
+    const wrap = document.getElementById('blocks-editor-wrap');
+    if (wrap) {
+      const offset = parseInt(w.startOffset) || 0;
+      const type = w.type;
+      const newHtml = this.renderBlocksEditor(type, offset);
+      const tmp = document.createElement('div');
+      tmp.innerHTML = newHtml;
+      const newWrap = tmp.querySelector('#blocks-editor-wrap');
+      if (newWrap) wrap.replaceWith(newWrap);
+    }
+  },
+
+  // Compila todos os blocos em um array único de dailyGoals
+  buildDailyGoalsFromBlocks() {
+    const w = this.state.wizard;
+    if (!w.blocks || w.blocks.length === 0) return [];
+    const type = w.type;
+    const offset = parseInt(w.startOffset) || 0;
+    let allGoals = [];
+    let cumStart = offset;
+    for (const blk of w.blocks) {
+      const endAt = parseInt(blk.endAt) || 0;
+      const days = parseInt(blk.days) || 1;
+      const qty = Math.max(0, endAt - cumStart);
+      if (qty <= 0) continue;
+      const blkGoals = this.distributeGoals(qty, days, w.startDate, w.daysOfWeek);
+      allGoals = allGoals.concat(blkGoals);
+      cumStart = endAt;
+    }
+    return allGoals;
+  },
+
+  // Retorna o índice do bloco ativo para uma task com blocos
+  getActiveBlock(task) {
+    if (!task.blocks || task.blocks.length === 0) return null;
+    const offset = task.startOffset || 0;
+    let cumStart = offset;
+    for (let i = 0; i < task.blocks.length; i++) {
+      const blk = task.blocks[i];
+      const endAt = parseInt(blk.endAt) || 0;
+      // Calcula progresso total da task até agora
+      const today = this.getToday();
+      let totalDone = offset;
+      for (let d = 0; d < task.dailyGoals.length; d++) {
+        const dd = this.addDays(task.startDate, d);
+        if (dd > today) break;
+        totalDone += (this.getTaskDayData(task.id, dd).progress || 0);
+      }
+      if (totalDone < endAt) {
+        return { index: i, label: blk.label || `Bloco ${i+1}`, startAt: cumStart + 1, endAt };
+      }
+      cumStart = endAt;
+    }
+    return null; // Todos os blocos concluídos
+  },
+
+  // ===================== GOAL CONGRATS MODAL =====================
+  renderGoalCongratsModal() {
+    const m = this.state.modal;
+    const task = this.state.tasks.find(t => t.id === m.taskId);
+    if (!task) return '';
+    const totalGoal = task.dailyGoals.reduce((a, b) => a + b, 0);
+    const unit = task.goalUnit || 'capítulos';
+    const days = task.dailyGoals.length;
+    return `<div class="overlay center" style="z-index:100">
+      <div class="modal card-modal" style="text-align:center;padding:32px 24px 36px">
+        <div style="font-size:64px;margin-bottom:12px;animation:congratsBouce .6s ease">🏆</div>
+        <div style="font-size:22px;font-weight:900;color:var(--accent);margin-bottom:8px;line-height:1.2">Parabéns!</div>
+        <div style="font-size:16px;font-weight:700;margin-bottom:6px">${task.name}</div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:24px;line-height:1.6">
+          Você concluiu seu objetivo!<br>
+          <span style="color:var(--text);font-weight:600">${totalGoal} ${unit}</span> em <span style="color:var(--text);font-weight:600">${days} dia${days!==1?'s':''}</span> 🎉
+        </div>
+        <button class="btn-primary" onclick="App.confirmGoalCongrats('${task.id}')" style="font-size:16px;padding:16px">OK, fechar tarefa ✓</button>
+        <button class="btn-secondary" onclick="App.closeModal()" style="margin-top:8px">Continuar sem fechar</button>
+      </div>
+    </div>`;
+  },
+
+  confirmGoalCongrats(taskId) {
+    const task = this.state.tasks.find(t => t.id === taskId);
+    if (task) {
+      task.deleted = true;
+      task.completedAt = this.getToday();
+      this.save();
+    }
+    this.state.modal = null;
+    this.render();
+    this.showToast('🏆 Objetivo concluído! Parabéns!', 'success');
+  },
+
   // ===================== INIT =====================
   init(){
     this.loadState();
@@ -3576,6 +3926,22 @@ renderManage() {
     this.checkMissedTasks();
     this.checkRecalculateBacklog();
     this.render();
+    this.startClock();
+  },
+
+  startClock(){
+    const tick = () => {
+      const el = document.getElementById('live-clock');
+      if (!el) return;
+      const now = new Date();
+      const h = String(now.getHours()).padStart(2,'0');
+      const m = String(now.getMinutes()).padStart(2,'0');
+      const s = String(now.getSeconds()).padStart(2,'0');
+      el.textContent = `${h}:${m}:${s}`;
+    };
+    tick();
+    if (this._clockInterval) clearInterval(this._clockInterval);
+    this._clockInterval = setInterval(tick, 1000);
   }
 };
 
@@ -3584,3 +3950,4 @@ renderManage() {
 </script>
 </body>
 </html>
+
