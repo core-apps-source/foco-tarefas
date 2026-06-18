@@ -2063,7 +2063,7 @@ renderManage() {
   },
   openEditTask(taskId) {
     const task=this.state.tasks.find(t=>t.id===taskId); if (!task) return;
-    this.state.wizard={editId:taskId,step:1,name:task.name,type:task.type,goalUnit:task.goalUnit||'páginas',totalGoal:task.type==='goal'?(task.totalBook||task.dailyGoals.reduce((a,b)=>a+b,0)):'',totalPages:task.totalPages||0,startOffset:task.startOffset||0,daysToComplete:task.type==='goal'?task.dailyGoals.length:'',distribution:'equal',dailyGoals:task.dailyGoals||[],schedule:task.schedule||'flexible',scheduledTime:task.scheduledTime||'08:00',daysOfWeek:task.daysOfWeek||[0,1,2,3,4,5,6],chapterPages:task.chapterPages||[],numChapters:(task.chapterPages&&task.chapterPages.length)||'',dailyMinutes:task.dailyMinutes||'',wordsEnabled:!!(task.wordsDailyGoals&&task.wordsDailyGoals.length),wordsTotal:task.wordsTotal||'',wordsOffset:task.wordsOffset||0,wordsDays:task.wordsDailyGoals?task.wordsDailyGoals.length:'',wordsDistribution:'equal',wordsDailyGoals:task.wordsDailyGoals||[],startDate:task.startDate||this.getToday()};
+    this.state.wizard={editId:taskId,step:1,name:task.name,type:task.type,goalUnit:task.goalUnit||'páginas',totalGoal:task.type==='goal'?(task.totalBook||task.dailyGoals.reduce((a,b)=>a+b,0)):'',totalPages:task.totalPages||0,startOffset:task.startOffset||0,daysToComplete:task.type==='goal'?task.dailyGoals.length:'',distribution:'equal',dailyGoals:task.dailyGoals||[],schedule:task.schedule||'flexible',scheduledTime:task.scheduledTime||'08:00',daysOfWeek:task.daysOfWeek||[0,1,2,3,4,5,6],chapterPages:task.chapterPages||[],numChapters:(task.chapterPages&&task.chapterPages.length)||'',useBlocks:!!(task.blocks&&task.blocks.length),blocks:task.blocks?task.blocks.map(b=>({...b})):[],dailyMinutes:task.dailyMinutes||'',wordsEnabled:!!(task.wordsDailyGoals&&task.wordsDailyGoals.length),wordsTotal:task.wordsTotal||'',wordsOffset:task.wordsOffset||0,wordsDays:task.wordsDailyGoals?task.wordsDailyGoals.length:'',wordsDistribution:'equal',wordsDailyGoals:task.wordsDailyGoals||[],startDate:task.startDate||this.getToday()};
     this.state.modal={type:MODALS.addTask}; this.render();
   },
   renderAddTaskModal() {
@@ -3779,17 +3779,17 @@ renderManage() {
       const canDelete = w.blocks.length > 1;
       return `<div style="background:var(--surface2);border-radius:12px;padding:12px 14px;margin-bottom:8px;border:1px solid var(--border)">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-          <input class="form-input" style="font-size:13px;font-weight:700;padding:6px 10px;flex:1;margin-right:8px" placeholder="Nome do bloco (ex: Pentateuco)" value="${blk.label||''}" oninput="App.setBlockField(${i},'label',this.value)">
+          <input id="block-label-${i}" class="form-input" style="font-size:13px;font-weight:700;padding:6px 10px;flex:1;margin-right:8px" placeholder="Nome do bloco (ex: Pentateuco)" value="${blk.label||''}" oninput="App.setBlockField(${i},'label',this.value)">
           ${canDelete ? `<button onclick="App.removeBlock(${i})" style="background:rgba(255,107,107,.15);color:var(--red);border:1px solid rgba(255,107,107,.3);border-radius:8px;padding:6px 10px;cursor:pointer;font-size:12px;font-weight:700;flex-shrink:0">✕</button>` : ''}
         </div>
         <div style="display:flex;gap:8px;margin-bottom:8px">
           <div style="flex:1">
             <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">Até ${unit === 'capítulos' ? 'capítulo' : 'página'} nº</div>
-            <input class="form-input" type="number" min="${cumStart > offset ? cumStart + 1 : offset + 1}" max="${total||9999}" placeholder="Ex: ${i===0?Math.round(total*0.3)||100:total}" value="${blk.endAt||''}" oninput="App.setBlockField(${i},'endAt',this.value)" style="padding:10px;font-size:16px;font-weight:700;text-align:center">
+            <input id="block-endAt-${i}" class="form-input" type="number" min="${cumStart > offset ? cumStart + 1 : offset + 1}" max="${total||9999}" placeholder="Ex: ${i===0?Math.round(total*0.3)||100:total}" value="${blk.endAt||''}" oninput="App.setBlockField(${i},'endAt',this.value)" style="padding:10px;font-size:16px;font-weight:700;text-align:center">
           </div>
           <div style="flex:1">
             <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">Dias do bloco</div>
-            <input class="form-input" type="number" min="1" placeholder="Ex: 30" value="${blk.days||''}" oninput="App.setBlockField(${i},'days',this.value)" style="padding:10px;font-size:16px;font-weight:700;text-align:center">
+            <input id="block-days-${i}" class="form-input" type="number" min="1" placeholder="Ex: 30" value="${blk.days||''}" oninput="App.setBlockField(${i},'days',this.value)" style="padding:10px;font-size:16px;font-weight:700;text-align:center">
           </div>
         </div>
         ${qty > 0 ? `<div style="font-size:11px;color:var(--accent);font-weight:600;padding:6px 8px;background:color-mix(in srgb,var(--accent) 8%,transparent);border-radius:8px">
@@ -3830,6 +3830,11 @@ renderManage() {
     // Atualiza o editor de blocos no DOM sem re-render completo
     const wrap = document.getElementById('blocks-editor-wrap');
     if (wrap) {
+      // Guarda o foco e a posição do cursor antes de substituir o DOM
+      const activeEl = document.activeElement;
+      const activeId = activeEl ? activeEl.id : null;
+      let selStart = null;
+      try { selStart = activeEl ? activeEl.selectionStart : null; } catch(e) {}
       const offset = parseInt(w.startOffset) || 0;
       const type = w.type;
       const newHtml = this.renderBlocksEditor(type, offset);
@@ -3837,6 +3842,16 @@ renderManage() {
       tmp.innerHTML = newHtml;
       const newWrap = tmp.querySelector('#blocks-editor-wrap');
       if (newWrap) wrap.replaceWith(newWrap);
+      // Restaura o foco e o cursor no mesmo campo
+      if (activeId) {
+        const restored = document.getElementById(activeId);
+        if (restored) {
+          restored.focus();
+          if (selStart !== null) {
+            try { restored.setSelectionRange(selStart, selStart); } catch(e) {}
+          }
+        }
+      }
     }
   },
 
