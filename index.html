@@ -3757,23 +3757,8 @@ renderManage() {
     // Calcula starts acumulados
     let cumStart = offset;
     const rows = w.blocks.map((blk, i) => {
-      const startAt = cumStart + 1;
       const endAt = parseInt(blk.endAt) || 0;
-      const qty = endAt > cumStart ? endAt - cumStart : 0;
-      const days = parseInt(blk.days) || 0;
-      const perDay = days > 0 && qty > 0 ? Math.ceil(qty / days) : 0;
-
-      let rangeLabel = '';
-      if (type === 'bible' && qty > 0) {
-        const s = getBookAndChapterFromAbsolute(startAt);
-        const e = getBookAndChapterFromAbsolute(endAt);
-        rangeLabel = s.bookId === e.bookId
-          ? `${s.bookName} ${s.chapter}–${e.chapter}`
-          : `${s.bookName} ${s.chapter} – ${e.bookName} ${e.chapter}`;
-      } else if (qty > 0) {
-        rangeLabel = `${startAt}–${endAt} ${unit}`;
-      }
-
+      const minVal = cumStart > offset ? cumStart + 1 : offset + 1;
       cumStart = endAt > cumStart ? endAt : cumStart;
 
       const canDelete = w.blocks.length > 1;
@@ -3785,16 +3770,14 @@ renderManage() {
         <div style="display:flex;gap:8px;margin-bottom:8px">
           <div style="flex:1">
             <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">Até ${unit === 'capítulos' ? 'capítulo' : 'página'} nº</div>
-            <input id="block-endAt-${i}" class="form-input" type="number" min="${cumStart > offset ? cumStart + 1 : offset + 1}" max="${total||9999}" placeholder="Ex: ${i===0?Math.round(total*0.3)||100:total}" value="${blk.endAt||''}" oninput="App.setBlockField(${i},'endAt',this.value)" style="padding:10px;font-size:16px;font-weight:700;text-align:center">
+            <input id="block-endAt-${i}" class="form-input" type="number" min="${minVal}" max="${total||9999}" placeholder="Ex: ${i===0?Math.round(total*0.3)||100:total}" value="${blk.endAt||''}" oninput="App.setBlockField(${i},'endAt',this.value)" style="padding:10px;font-size:16px;font-weight:700;text-align:center">
           </div>
           <div style="flex:1">
             <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">Dias do bloco</div>
             <input id="block-days-${i}" class="form-input" type="number" min="1" placeholder="Ex: 30" value="${blk.days||''}" oninput="App.setBlockField(${i},'days',this.value)" style="padding:10px;font-size:16px;font-weight:700;text-align:center">
           </div>
         </div>
-        ${qty > 0 ? `<div style="font-size:11px;color:var(--accent);font-weight:600;padding:6px 8px;background:color-mix(in srgb,var(--accent) 8%,transparent);border-radius:8px">
-          ${rangeLabel} · <b>${qty} ${unit}</b>${perDay > 0 ? ` · ~${perDay}/dia` : ''}
-        </div>` : `<div style="font-size:11px;color:var(--muted);font-style:italic;padding:4px 0">Configure o capítulo/página final e os dias do bloco</div>`}
+        <div id="block-preview-${i}">${this.blockPreviewHtml(type, i)}</div>
       </div>`;
     });
 
@@ -3823,36 +3806,50 @@ renderManage() {
     this.render();
   },
 
+  // Calcula os dados de preview de um bloco a partir do modelo do wizard
+  blockPreviewHtml(type, i) {
+    const w = this.state.wizard;
+    if (!w.blocks || !w.blocks[i]) return '';
+    const unit = type === 'bible' ? 'capítulos' : (w.goalUnit || 'páginas');
+    const offset = parseInt(w.startOffset) || 0;
+    let cumStart = offset;
+    for (let k = 0; k < i; k++) {
+      const e = parseInt(w.blocks[k].endAt) || 0;
+      if (e > cumStart) cumStart = e;
+    }
+    const startAt = cumStart + 1;
+    const endAt = parseInt(w.blocks[i].endAt) || 0;
+    const qty = endAt > cumStart ? endAt - cumStart : 0;
+    const days = parseInt(w.blocks[i].days) || 0;
+    const perDay = days > 0 && qty > 0 ? Math.ceil(qty / days) : 0;
+    if (qty <= 0) {
+      return `<div style="font-size:11px;color:var(--muted);font-style:italic;padding:4px 0">Configure o capítulo/página final e os dias do bloco</div>`;
+    }
+    let rangeLabel = '';
+    if (type === 'bible') {
+      const s = getBookAndChapterFromAbsolute(startAt);
+      const e = getBookAndChapterFromAbsolute(endAt);
+      rangeLabel = s.bookId === e.bookId
+        ? `${s.bookName} ${s.chapter}–${e.chapter}`
+        : `${s.bookName} ${s.chapter} – ${e.bookName} ${e.chapter}`;
+    } else {
+      rangeLabel = `${startAt}–${endAt} ${unit}`;
+    }
+    return `<div style="font-size:11px;color:var(--accent);font-weight:600;padding:6px 8px;background:color-mix(in srgb,var(--accent) 8%,transparent);border-radius:8px">
+      ${rangeLabel} · <b>${qty} ${unit}</b>${perDay > 0 ? ` · ~${perDay}/dia` : ''}
+    </div>`;
+  },
+
   setBlockField(i, field, value) {
     const w = this.state.wizard;
     if (!w.blocks || !w.blocks[i]) return;
     w.blocks[i][field] = value;
-    // Atualiza o editor de blocos no DOM sem re-render completo
-    const wrap = document.getElementById('blocks-editor-wrap');
-    if (wrap) {
-      // Guarda o foco e a posição do cursor antes de substituir o DOM
-      const activeEl = document.activeElement;
-      const activeId = activeEl ? activeEl.id : null;
-      let selStart = null;
-      try { selStart = activeEl ? activeEl.selectionStart : null; } catch(e) {}
-      const offset = parseInt(w.startOffset) || 0;
-      const type = w.type;
-      const newHtml = this.renderBlocksEditor(type, offset);
-      const tmp = document.createElement('div');
-      tmp.innerHTML = newHtml;
-      const newWrap = tmp.querySelector('#blocks-editor-wrap');
-      if (newWrap) wrap.replaceWith(newWrap);
-      // Restaura o foco e o cursor no mesmo campo
-      if (activeId) {
-        const restored = document.getElementById(activeId);
-        if (restored) {
-          restored.focus();
-          if (selStart !== null) {
-            try { restored.setSelectionRange(selStart, selStart); } catch(e) {}
-          }
-        }
-      }
-    }
+    // Atualiza APENAS os previews (não os inputs) para preservar foco e cursor
+    const type = w.type;
+    w.blocks.forEach((_, k) => {
+      const el = document.getElementById(`block-preview-${k}`);
+      if (el) el.innerHTML = this.blockPreviewHtml(type, k);
+    });
   },
 
   // Compila todos os blocos em um array único de dailyGoals
@@ -3861,6 +3858,7 @@ renderManage() {
     if (!w.blocks || w.blocks.length === 0) return [];
     const type = w.type;
     const offset = parseInt(w.startOffset) || 0;
+    const total = type === 'bible' ? 1189 : (parseInt(w.totalGoal) || 0);
     let allGoals = [];
     let cumStart = offset;
     for (const blk of w.blocks) {
@@ -3868,9 +3866,26 @@ renderManage() {
       const days = parseInt(blk.days) || 1;
       const qty = Math.max(0, endAt - cumStart);
       if (qty <= 0) continue;
-      const blkGoals = this.distributeGoals(qty, days, w.startDate, w.daysOfWeek);
+      // Alinha os dias da semana a partir da posição atual no cronograma
+      const blkStartDate = this.addDays(w.startDate, allGoals.length);
+      const blkGoals = this.distributeGoals(qty, days, blkStartDate, w.daysOfWeek);
       allGoals = allGoals.concat(blkGoals);
       cumStart = endAt;
+    }
+    // Conteúdo não coberto pelos blocos → continua no modo normal (sem bloco)
+    const remaining = total - cumStart;
+    if (remaining > 0) {
+      const deadline = parseInt(w.daysToComplete) || 0;
+      let leftoverDays = deadline - allGoals.length;
+      if (leftoverDays < 1) {
+        // Sem prazo restante suficiente: usa o ritmo médio já praticado nos blocos
+        const blockContent = cumStart - offset;
+        const avgPerDay = allGoals.length > 0 ? Math.ceil(blockContent / allGoals.length) : remaining;
+        leftoverDays = Math.max(1, Math.ceil(remaining / Math.max(1, avgPerDay)));
+      }
+      const leftoverStartDate = this.addDays(w.startDate, allGoals.length);
+      const leftoverGoals = this.distributeGoals(remaining, leftoverDays, leftoverStartDate, w.daysOfWeek);
+      allGoals = allGoals.concat(leftoverGoals);
     }
     return allGoals;
   },
@@ -3937,6 +3952,8 @@ renderManage() {
   // ===================== INIT =====================
   init(){
     this.loadState();
+    // Sempre inicia no dia atual (não mantém uma data antiga selecionada de outra sessão)
+    this.state.selectedDate = this.getToday();
     this.applyTheme();
     this.checkMissedTasks();
     this.checkRecalculateBacklog();
